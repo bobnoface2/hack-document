@@ -141,24 +141,37 @@ function GenerateView({ store }: { store: ReturnType<typeof useAppStore> }) {
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    
+    let printIframe = document.getElementById('print-iframe') as HTMLIFrameElement;
+    if (!printIframe) {
+      printIframe = document.createElement('iframe');
+      printIframe.id = 'print-iframe';
+      printIframe.style.position = 'absolute';
+      printIframe.style.width = '0px';
+      printIframe.style.height = '0px';
+      printIframe.style.border = 'none';
+      document.body.appendChild(printIframe);
+    }
+
     const css = template?.format === 'html' 
       ? 'body { padding: 20px; font-family: sans-serif; } @page { size: A4; margin: 20mm; }'
       : 'body { font-family: Arial, sans-serif; padding: 20px; white-space: pre-wrap; line-height: 1.5; } @page { size: A4; margin: 20mm; }';
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>${template?.name || 'Documento'}</title>
-          <style>${css}</style>
-        </head>
-        <body>${finalContent}</body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+    const doc = printIframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(`
+        <html>
+          <head>
+            <title>${template?.name || 'Documento'}</title>
+            <style>${css}</style>
+          </head>
+          <body>${finalContent}</body>
+        </html>
+      `);
+      doc.close();
+      printIframe.contentWindow?.focus();
+      printIframe.contentWindow?.print();
+    }
   };
 
   if (!template) {
@@ -288,7 +301,7 @@ function GenerateView({ store }: { store: ReturnType<typeof useAppStore> }) {
           <div className="absolute top-4 right-4 flex gap-2">
              <span className="px-2 py-1 bg-[#1A202C] text-white rounded-[4px] text-[10px] font-bold border border-[#2D3748] uppercase">Preview Mode</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-12">
+          <div className="flex-1 overflow-y-auto p-12 select-text cursor-text">
             <div className="max-w-2xl mx-auto">
               {template.format === 'html' ? (
                 <div dangerouslySetInnerHTML={{ __html: finalContent }} />
@@ -558,21 +571,34 @@ function HistoryView({ store }: { store: ReturnType<typeof useAppStore> }) {
                 </button>
                 <button
                   onClick={() => {
-                    const printWindow = window.open('', '_blank');
-                    if (!printWindow) return;
+                    let printIframe = document.getElementById('print-iframe-history') as HTMLIFrameElement;
+                    if (!printIframe) {
+                      printIframe = document.createElement('iframe');
+                      printIframe.id = 'print-iframe-history';
+                      printIframe.style.position = 'absolute';
+                      printIframe.style.width = '0px';
+                      printIframe.style.height = '0px';
+                      printIframe.style.border = 'none';
+                      document.body.appendChild(printIframe);
+                    }
                     
                     const css = selectedDoc.format === 'html'
                       ? 'body { padding: 20px; font-family: sans-serif; } @page { size: A4; margin: 20mm; }'
                       : 'body { font-family: Arial, sans-serif; padding: 20px; white-space: pre-wrap; line-height: 1.5; } @page { size: A4; margin: 20mm; }';
                       
-                    printWindow.document.write(`
-                      <html>
-                        <head><style>${css}</style></head>
-                        <body>${selectedDoc.finalContent}</body>
-                      </html>
-                    `);
-                    printWindow.document.close();
-                    printWindow.print();
+                    const doc = printIframe.contentWindow?.document;
+                    if (doc) {
+                      doc.open();
+                      doc.write(`
+                        <html>
+                          <head><style>${css}</style></head>
+                          <body>${selectedDoc.finalContent}</body>
+                        </html>
+                      `);
+                      doc.close();
+                      printIframe.contentWindow?.focus();
+                      printIframe.contentWindow?.print();
+                    }
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-[#1A202C] border border-[#4A5568] text-white font-bold text-xs rounded-md hover:bg-[#2D3748] transition"
                 >
@@ -594,7 +620,7 @@ function HistoryView({ store }: { store: ReturnType<typeof useAppStore> }) {
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-12 bg-white text-[#1A202C]">
+            <div className="flex-1 overflow-y-auto p-12 bg-white text-[#1A202C] select-text cursor-text">
               <div className="max-w-2xl mx-auto">
                 {selectedDoc.format === 'html' ? (
                   <div dangerouslySetInnerHTML={{ __html: selectedDoc.finalContent }} />
