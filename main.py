@@ -24,6 +24,59 @@ def start_server(port, folder):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=folder, **kwargs)
         
+        def do_POST(self):
+            if self.path == '/api/send-email':
+                import json
+                import smtplib
+                from email.mime.text import MIMEText
+                from email.mime.multipart import MIMEMultipart
+
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                data = json.loads(post_data.decode('utf-8'))
+
+                to_email = data.get('to')
+                subject = data.get('subject')
+                html_content = data.get('html')
+                req_smtp_user = data.get('smtpUser')
+                req_smtp_pass = data.get('smtpPass')
+
+                # Configurações do Yahoo
+                smtp_user = req_smtp_user
+                smtp_pass = req_smtp_pass
+                smtp_host = "smtp.mail.yahoo.com"
+                smtp_port = 465
+
+                if not smtp_user or not smtp_pass:
+                    self.send_response(400)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Faltam credenciais SMTP"}).encode('utf-8'))
+                    return
+
+                try:
+                    msg = MIMEMultipart()
+                    msg['From'] = f"Hack Document <{smtp_user}>"
+                    msg['To'] = to_email
+                    msg['Subject'] = subject
+                    msg.attach(MIMEText(html_content, 'html'))
+
+                    with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+                        server.login(smtp_user, smtp_pass)
+                        server.send_message(msg)
+
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
+            else:
+                super().do_POST()
+
         def log_message(self, format, *args):
             pass # Evita spam no console
 

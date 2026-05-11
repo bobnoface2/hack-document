@@ -488,6 +488,14 @@ export function useAppStore() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [smtpUser, setSmtpUser] = useState<string>(() => {
+    return localStorage.getItem('documestre_smtp_user') || '';
+  });
+
+  const [smtpPass, setSmtpPass] = useState<string>(() => {
+    return localStorage.getItem('documestre_smtp_pass') || '';
+  });
+
   useEffect(() => {
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
   }, [templates]);
@@ -495,6 +503,14 @@ export function useAppStore() {
   useEffect(() => {
     localStorage.setItem(DOCS_KEY, JSON.stringify(documents));
   }, [documents]);
+
+  useEffect(() => {
+    localStorage.setItem('documestre_smtp_user', smtpUser);
+  }, [smtpUser]);
+
+  useEffect(() => {
+    localStorage.setItem('documestre_smtp_pass', smtpPass);
+  }, [smtpPass]);
 
   const addTemplate = (template: Template) => {
     setTemplates((prev) => [template, ...prev]);
@@ -526,5 +542,9 @@ export function useAppStore() {
     deleteTemplate,
     saveDocument,
     deleteDocument,
+    smtpUser,
+    setSmtpUser,
+    smtpPass,
+    setSmtpPass,
   };
 }
