@@ -495,6 +495,10 @@ export function useAppStore() {
     return localStorage.getItem('documestre_smtp_pass') || '';
   });
 
+  const [geminiKey, setGeminiKey] = useState<string>(() => {
+    return localStorage.getItem('documestre_gemini_key') || '';
+  });
+
   useEffect(() => {
     const apiGet = async (key: string) => {
       try {
@@ -526,6 +530,9 @@ export function useAppStore() {
 
       const smtpP = await apiGet('documestre_smtp_pass');
       if (smtpP) setSmtpPass(smtpP);
+
+      const geminiK = await apiGet('documestre_gemini_key');
+      if (geminiK) setGeminiKey(geminiK);
     };
     
     loadFromDb();
@@ -560,6 +567,11 @@ export function useAppStore() {
     localStorage.setItem('documestre_smtp_pass', smtpPass);
     apiSet('documestre_smtp_pass', smtpPass);
   }, [smtpPass]);
+
+  useEffect(() => {
+    localStorage.setItem('documestre_gemini_key', geminiKey);
+    apiSet('documestre_gemini_key', geminiKey);
+  }, [geminiKey]);
 
 
   const addTemplate = (template: Template) => {
@@ -596,5 +608,7 @@ export function useAppStore() {
     setSmtpUser,
     smtpPass,
     setSmtpPass,
+    geminiKey,
+    setGeminiKey,
   };
 }

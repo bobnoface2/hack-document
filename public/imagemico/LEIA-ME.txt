@@ -1,4 +1,0 @@
-Para mudar o ícone:
-1. Cole sua imagem aqui dentro desta pasta.
-2. Nomeie sua imagem de acordo com o desejado (por exemplo, `icone.png` ou `icone.ico`).
-3. Abra o arquivo `src/App.tsx` na linha onde está a tag `<img src="/imagemico/icone.svg"` e altere para o nome do seu novo arquivo.

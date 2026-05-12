@@ -1,63 +1,181 @@
 import express from 'express';
-import nodemailer from 'nodemailer';
 import path from 'path';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
+import os from 'os';
+// Removed GoogleGenerativeAI
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Port must be 3000
+const PORT = 3000;
+
+// JSON DB for simplicity and compatibility (avoiding SQLite glibc issues)
+const DB_FILE = path.join(process.cwd(), "HackDocumentPRO_Data.json");
+
+async function initDB() {
+  try {
+    await fs.access(DB_FILE);
+  } catch {
+    try {
+      await fs.writeFile(DB_FILE, JSON.stringify({ store: {}, logs: [] }, null, 2));
+    } catch (err) {
+      console.error("Failed to initialize DB", err);
+    }
+  }
+}
+
+async function getDB() {
+  const data = await fs.readFile(DB_FILE, 'utf-8');
+  return JSON.parse(data);
+}
+
+async function saveDB(data: any) {
+  await fs.writeFile(DB_FILE, JSON.stringify(data, null, 2));
+}
+
+initDB();
+
 async function startServer() {
   const app = express();
-  const PORT = 3000;
-
   app.use(express.json({ limit: '10mb' }));
 
-  // API endpoint to send email
-  app.post('/api/send-email', async (req, res) => {
-    const { to, subject, html, smtpUser: reqSmtpUser, smtpPass: reqSmtpPass } = req.body;
-
-    if (!to || !subject || !html) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
+  // API: Store
+  app.post('/api/store', async (req, res) => {
     try {
-      const finalSmtpUser = reqSmtpUser || process.env.SMTP_USER;
-      const finalSmtpPass = reqSmtpPass || process.env.SMTP_PASS;
+      const { key, value } = req.body;
+      const db = await getDB();
+      db.store[key] = value;
+      await saveDB(db);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
-      if (!finalSmtpUser || !finalSmtpPass) {
-        return res.status(400).json({ error: 'Faltam credenciais SMTP' });
-      }
+  app.get('/api/store', async (req, res) => {
+    try {
+      const key = req.query.key as string;
+      const db = await getDB();
+      res.json({ value: db.store[key] || null });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.mail.yahoo.com',
-        port: parseInt(process.env.SMTP_PORT || '465'),
-        secure: true, 
-        auth: {
-          user: finalSmtpUser,
-          pass: finalSmtpPass,
-        },
+  // API: AI Refine
+  app.post('/api/ai/refine', async (req, res) => {
+    try {
+      const { prompt, content } = req.body;
+      const fullPrompt = `${prompt}\n\nAplique isso ao seguinte texto (retorne apenas o texto modificado):\n\n${content}`;
+      
+      // Integracao com Ollama Llama Localmente
+      const response = await fetch('http://127.0.0.1:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama3', // Modelo padrao do ollama, pode ser alterado
+          prompt: fullPrompt,
+          stream: false
+        })
       });
 
-      const info = await transporter.sendMail({
-        from: `"Hack Document" <${finalSmtpUser}>`,
+      if (!response.ok) {
+        throw new Error(`Ollama error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json({ refinedContent: data.response });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API: Export PDF
+  app.post('/api/export/pdf', async (req, res) => {
+    try {
+      const { content, filename } = req.body;
+      const PDFDocument = (await import('pdfkit')).default;
+      const doc = new PDFDocument();
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename || 'documento.pdf'}`);
+      
+      doc.pipe(res);
+      doc.fontSize(12).text(content, 50, 50);
+      doc.end();
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API: Send Email
+  app.post('/api/send-email', async (req, res) => {
+    try {
+      const { to, subject, html, smtpUser, smtpPass } = req.body;
+      
+      let host = "smtp.mail.yahoo.com";
+      if (smtpUser.toLowerCase().includes('gmail')) host = "smtp.gmail.com";
+      else if (smtpUser.toLowerCase().includes('outlook') || smtpUser.toLowerCase().includes('hotmail')) host = "smtp.office365.com";
+
+      const transporter = nodemailer.createTransport({
+        host,
+        port: 465,
+        secure: true,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      await transporter.sendMail({
+        from: `"DocuMestre Pro" <${smtpUser}>`,
         to,
         subject,
         html,
       });
 
-      console.log('Message sent: %s', info.messageId);
-      res.json({ success: true, messageId: info.messageId });
-    } catch (error) {
-      console.error('Error sending email:', error);
-      res.status(500).json({ error: 'Failed to send email', details: error instanceof Error ? error.message : String(error) });
+      // Log success
+      const db = await getDB();
+      db.logs.unshift({
+        id: Date.now().toString(),
+        to,
+        subject,
+        timestamp: new Date().toLocaleString(),
+        status: 'Sucesso'
+      });
+      if (db.logs.length > 50) db.logs.pop();
+      await saveDB(db);
+
+      res.json({ success: true });
+    } catch (err: any) {
+      // Log failure
+      const db = await getDB();
+      db.logs.unshift({
+        id: Date.now().toString(),
+        to: req.body.to,
+        subject: req.body.subject,
+        timestamp: new Date().toLocaleString(),
+        status: `Erro: ${err.message}`
+      });
+      await saveDB(db);
+      res.status(500).json({ error: err.message });
     }
   });
 
-  // Vite middleware for development
+  app.get('/api/logs', async (req, res) => {
+    try {
+      const db = await getDB();
+      res.json(db.logs);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Vite Integration
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -67,17 +185,14 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
   });
 }
 
-startServer().catch(err => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+startServer();

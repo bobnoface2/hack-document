@@ -1,4 +1,4 @@
-export type TemplateType = 'documento' | 'nota' | 'recibo';
+export type TemplateType = 'documento' | 'nota' | 'recibo' | 'contrato' | 'alerta' | 'outros';
 
 export interface Template {
   id: string;
