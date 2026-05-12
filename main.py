@@ -1,10 +1,12 @@
 import os
 import sys
-import threading
-import http.server
-import socketserver
 import json
 import sqlite3
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from flask import Flask, request, jsonify, send_from_directory
+import threading
 
 try:
     import webview
@@ -46,101 +48,60 @@ def db_set(key, value):
     conn.commit()
     conn.close()
 
-def start_server(port, folder):
-    """Inicia um servidor HTTP local simples apontando para a pasta web"""
-    class Handler(http.server.SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=folder, **kwargs)
-        
-        def do_GET(self):
-            if self.path.startswith('/api/store'):
-                from urllib.parse import urlparse, parse_qs
-                query = parse_qs(urlparse(self.path).query)
-                key = query.get('key', [''])[0]
-                val = db_get(key)
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"value": val}).encode('utf-8'))
-                return
-            super().do_GET()
+app = Flask(__name__, static_folder=None)
 
-        def do_POST(self):
-            if self.path == '/api/store':
-                content_length = int(self.headers['Content-Length'])
-                post_data = self.rfile.read(content_length)
-                data = json.loads(post_data.decode('utf-8'))
-                key = data.get('key')
-                value = data.get('value')
-                db_set(key, value)
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
-                return
-            
-            if self.path == '/api/send-email':
-                import json
-                import smtplib
-                from email.mime.text import MIMEText
-                from email.mime.multipart import MIMEMultipart
+@app.route('/api/store', methods=['GET', 'POST'])
+def api_store():
+    if request.method == 'POST':
+        data = request.json
+        db_set(data.get('key'), data.get('value'))
+        return jsonify({"success": True})
+    else:
+        key = request.args.get('key', '')
+        return jsonify({"value": db_get(key)})
 
-                content_length = int(self.headers['Content-Length'])
-                post_data = self.rfile.read(content_length)
-                data = json.loads(post_data.decode('utf-8'))
+@app.route('/api/send-email', methods=['POST'])
+def send_email():
+    data = request.json
+    smtp_user = data.get('smtpUser')
+    smtp_pass = data.get('smtpPass')
+    to_email = data.get('to')
+    subject = data.get('subject')
+    html_content = data.get('html')
 
-                to_email = data.get('to')
-                subject = data.get('subject')
-                html_content = data.get('html')
-                req_smtp_user = data.get('smtpUser')
-                req_smtp_pass = data.get('smtpPass')
+    if not smtp_user or not smtp_pass:
+        return jsonify({"error": "Faltam credenciais SMTP"}), 400
 
-                # Configurações do Yahoo
-                smtp_user = req_smtp_user
-                smtp_pass = req_smtp_pass
-                smtp_host = "smtp.mail.yahoo.com"
-                smtp_port = 465
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = f"Hack Document <{smtp_user}>"
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(html_content, 'html'))
 
-                if not smtp_user or not smtp_pass:
-                    self.send_response(400)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": "Faltam credenciais SMTP"}).encode('utf-8'))
-                    return
+        server = smtplib.SMTP_SSL("smtp.mail.yahoo.com", 465)
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+        server.quit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-                try:
-                    msg = MIMEMultipart()
-                    msg['From'] = f"Hack Document <{smtp_user}>"
-                    msg['To'] = to_email
-                    msg['Subject'] = subject
-                    msg.attach(MIMEText(html_content, 'html'))
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    base_path = get_base_path()
+    dist_folder = os.path.join(base_path, 'dist')
+    
+    if path != "" and os.path.exists(os.path.join(dist_folder, path)):
+        return send_from_directory(dist_folder, path)
+    else:
+        return send_from_directory(dist_folder, 'index.html')
 
-                    with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
-                        server.login(smtp_user, smtp_pass)
-                        server.send_message(msg)
-
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
-                except Exception as e:
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
-            else:
-                super().do_POST()
-
-        def log_message(self, format, *args):
-            pass # Evita spam no console
-
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", port), Handler) as httpd:
-        httpd.serve_forever()
+def start_server():
+    app.run(host='127.0.0.1', port=13374, debug=False)
 
 if __name__ == '__main__':
-    PORT = 13374 # Uma porta qualquer para não conflitar
-    
     init_db()
 
     base_path = get_base_path()
@@ -148,12 +109,11 @@ if __name__ == '__main__':
     
     if not os.path.exists(dist_folder):
         print(f"Pasta 'dist' não encontrada em {base_path}!")
-        print("Você precisa primeiro gerar os arquivos do site executando 'npm run build'")
-        print("E no auto-py-to-exe, você precisa incluir a pasta 'dist' inteira.")
+        print("Certifique-se de que a pasta 'dist' foi gerada (npm run build) e incluida no auto-py-to-exe.")
         sys.exit(1)
-        
-    server_thread = threading.Thread(target=start_server, args=(PORT, dist_folder), daemon=True)
-    server_thread.start()
+
+    t = threading.Thread(target=start_server, daemon=True)
+    t.start()
     
-    webview.create_window('Hack Document', f'http://localhost:{PORT}', width=1280, height=800)
+    webview.create_window('Hack Document', 'http://127.0.0.1:13374', width=1280, height=800)
     webview.start()
