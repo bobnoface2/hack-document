@@ -474,7 +474,6 @@ export function useAppStore() {
     const saved = localStorage.getItem(TEMPLATES_KEY);
     if (saved) {
       const parsed = JSON.parse(saved) as Template[];
-      // Add any new default templates that aren't in the saved list
       const missingDefaults = defaultTemplates.filter(
         def => !parsed.some(p => p.id === def.id)
       );
@@ -497,20 +496,71 @@ export function useAppStore() {
   });
 
   useEffect(() => {
+    const apiGet = async (key: string) => {
+      try {
+        const res = await fetch(`/api/store?key=${key}`);
+        const data = await res.json();
+        return data.value;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const loadFromDb = async () => {
+      const templatesStr = await apiGet(TEMPLATES_KEY);
+      if (templatesStr) {
+        try {
+          const parsed = JSON.parse(templatesStr) as Template[];
+          const missingDefaults = defaultTemplates.filter(def => !parsed.some(p => p.id === def.id));
+          setTemplates([...parsed, ...missingDefaults]);
+        } catch(e) {}
+      }
+      
+      const docsStr = await apiGet(DOCS_KEY);
+      if (docsStr) {
+        try { setDocuments(JSON.parse(docsStr)); } catch(e) {}
+      }
+      
+      const smtpU = await apiGet('documestre_smtp_user');
+      if (smtpU) setSmtpUser(smtpU);
+
+      const smtpP = await apiGet('documestre_smtp_pass');
+      if (smtpP) setSmtpPass(smtpP);
+    };
+    
+    loadFromDb();
+  }, []);
+
+  const apiSet = async (key: string, value: string) => {
+    try {
+      await fetch('/api/store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value })
+      });
+    } catch (e) {}
+  };
+
+  useEffect(() => {
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+    apiSet(TEMPLATES_KEY, JSON.stringify(templates));
   }, [templates]);
 
   useEffect(() => {
     localStorage.setItem(DOCS_KEY, JSON.stringify(documents));
+    apiSet(DOCS_KEY, JSON.stringify(documents));
   }, [documents]);
 
   useEffect(() => {
     localStorage.setItem('documestre_smtp_user', smtpUser);
+    apiSet('documestre_smtp_user', smtpUser);
   }, [smtpUser]);
 
   useEffect(() => {
     localStorage.setItem('documestre_smtp_pass', smtpPass);
+    apiSet('documestre_smtp_pass', smtpPass);
   }, [smtpPass]);
+
 
   const addTemplate = (template: Template) => {
     setTemplates((prev) => [template, ...prev]);

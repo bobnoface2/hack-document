@@ -465,29 +465,19 @@ function TemplatesView({ store }: { store: ReturnType<typeof useAppStore> }) {
                     <span>CONTEÚDO DO MODELO</span>
                     <span className="text-[10px] font-bold text-[#ffffff] bg-green-500/30 border border-green-500/50 px-2 py-0.5 rounded">Dica: Use {'{{nome}}'} para variáveis</span>
                   </label>
-                  {editingTemplate.format === 'html' ? (
-                     <div className="flex-1 bg-white text-white rounded-md overflow-hidden mt-1 shadow-inner h-full flex flex-col">
-                       <ReactQuill 
-                          theme="snow"
-                          value={editingTemplate.content}
-                          onChange={(content) => setEditingTemplate({...editingTemplate, content})}
-                          className="h-full flex-1 flex flex-col [&_.ql-container]:flex-1 [&_.ql-container]:overflow-y-auto"
-                       />
-                     </div>
-                  ) : (
-                    <textarea 
-                      className="flex-1 w-full border border-[#1a1a1a] bg-[#000000] text-[#ffffff] font-mono text-[13px] p-4 rounded-md focus:border-[#39FF14] focus:ring-[#39FF14] resize-none shadow-inner"
-                      value={editingTemplate.content}
-                      onChange={e => setEditingTemplate({...editingTemplate, content: e.target.value})}
-                    />
-                  )}
+                  <textarea 
+                    className="flex-1 w-full border border-[#1a1a1a] bg-[#000000] text-[#ffffff] font-mono text-[13px] p-4 mt-1 rounded-md focus:border-[#39FF14] focus:ring-[#39FF14] resize-none shadow-inner"
+                    value={editingTemplate.content}
+                    onChange={e => setEditingTemplate({...editingTemplate, content: e.target.value})}
+                    placeholder={editingTemplate.format === 'html' ? "Insira seu código HTML aqui..." : "Digite o conteúdo aqui..."}
+                  />
                 </div>
                 
                 <div className="flex-1 flex flex-col mt-4">
                   <label className="block text-xs font-mono text-[#ffffff] mb-1 uppercase">
                     Preview do Template
                   </label>
-                  <div className="flex-1 w-full bg-white text-white p-4 rounded-md overflow-y-auto border border-[#1a1a1a] shadow-inner text-sm">
+                  <div className="flex-1 w-full bg-white text-black p-4 rounded-md overflow-y-auto border border-[#1a1a1a] shadow-inner text-sm">
                     {editingTemplate.format === 'html' ? (
                       <div dangerouslySetInnerHTML={{ __html: editingTemplate.content }} />
                     ) : (

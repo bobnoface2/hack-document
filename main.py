@@ -3,6 +3,8 @@ import sys
 import threading
 import http.server
 import socketserver
+import json
+import sqlite3
 
 try:
     import webview
@@ -14,9 +16,35 @@ except ImportError:
 def get_base_path():
     """Retorna o caminho base correto, seja rodando do script ou do executável compilado"""
     if getattr(sys, 'frozen', False):
-        # Se for empacotado pelo PyInstaller / auto-py-to-exe
         return sys._MEIPASS
     return os.path.dirname(os.path.abspath(__file__))
+
+DB_FILE = os.path.join(os.path.expanduser("~"), "HackDocumentData.db")
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS store (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                 )''')
+    conn.commit()
+    conn.close()
+
+def db_get(key):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('SELECT value FROM store WHERE key = ?', (key,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def db_set(key, value):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('INSERT OR REPLACE INTO store (key, value) VALUES (?, ?)', (key, value))
+    conn.commit()
+    conn.close()
 
 def start_server(port, folder):
     """Inicia um servidor HTTP local simples apontando para a pasta web"""
@@ -24,7 +52,33 @@ def start_server(port, folder):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=folder, **kwargs)
         
+        def do_GET(self):
+            if self.path.startswith('/api/store'):
+                from urllib.parse import urlparse, parse_qs
+                query = parse_qs(urlparse(self.path).query)
+                key = query.get('key', [''])[0]
+                val = db_get(key)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"value": val}).encode('utf-8'))
+                return
+            super().do_GET()
+
         def do_POST(self):
+            if self.path == '/api/store':
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                data = json.loads(post_data.decode('utf-8'))
+                key = data.get('key')
+                value = data.get('value')
+                db_set(key, value)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode('utf-8'))
+                return
+            
             if self.path == '/api/send-email':
                 import json
                 import smtplib
@@ -87,6 +141,8 @@ def start_server(port, folder):
 if __name__ == '__main__':
     PORT = 13374 # Uma porta qualquer para não conflitar
     
+    init_db()
+
     base_path = get_base_path()
     dist_folder = os.path.join(base_path, 'dist')
     
