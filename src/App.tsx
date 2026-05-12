@@ -379,13 +379,86 @@ function GenerateView({ store }: { store: any }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 mt-4 sm:mt-0">
+          <button 
+            onClick={() => {
+              const sigs = `
+                <div style="margin-top: 60px; display: flex; justify-content: space-around; width: 100%;">
+                  <div style="text-align: center; width: 45%;">
+                     <hr style="border: 0; border-top: 1px solid #000; margin-bottom: 10px;" />
+                     <p style="font-family: sans-serif; font-size: 14px; margin: 0;">Assinatura Editável</p>
+                  </div>
+                  <div style="text-align: center; width: 45%;">
+                     <hr style="border: 0; border-top: 1px solid #000; margin-bottom: 10px;" />
+                     <p style="font-family: sans-serif; font-size: 14px; margin: 0;">Nome/Cargo</p>
+                  </div>
+                </div>
+              `;
+              setFinalContent(prev => prev + sigs);
+            }}
+            className="px-4 py-3 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center gap-2 text-sm"
+          >
+             <Plus className="h-4 w-4" /> Linhas p/ Assinatura
+          </button>
+          
+          <button 
+            onClick={() => {
+               const email = prompt("Digite o e-mail de destino:");
+               if(email) {
+                  fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      to: email,
+                      subject: `Documento: ${template?.name}`,
+                      html: finalContent,
+                      smtpUser: store.smtpUser || '',
+                      smtpPass: store.smtpPass || ''
+                    })
+                  }).then(r => r.json()).then(data => {
+                     if(data.success) alert("E-mail enviado com sucesso!");
+                     else alert("Erro ao enviar e-mail: " + (data.error || "Verifique credenciais nas configurações."));
+                  }).catch(() => alert("Erro ao conectar com servidor de e-mail."));
+               }
+            }}
+            className="px-4 py-3 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center gap-2 text-sm"
+          >
+             <Mail className="h-4 w-4 text-orange-400" /> E-mail
+          </button>
+
+          <button 
+            onClick={() => {
+              const iframe = document.createElement('iframe');
+              iframe.style.position = 'fixed';
+              iframe.style.right = '0';
+              iframe.style.bottom = '0';
+              iframe.style.width = '0';
+              iframe.style.height = '0';
+              iframe.style.border = '0';
+              document.body.appendChild(iframe);
+              const doc = iframe.contentWindow?.document;
+              if (doc) {
+                doc.write(`<html><head><title>${template?.name || 'Documento'}</title><style>body { font-family: sans-serif; margin: 20px; }</style></head><body>${finalContent}</body></html>`);
+                doc.close();
+                setTimeout(() => {
+                  iframe.contentWindow?.focus();
+                  iframe.contentWindow?.print();
+                  setTimeout(() => document.body.removeChild(iframe), 1000);
+                }, 200);
+              }
+            }}
+            className="px-4 py-3 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center gap-2 text-sm"
+          >
+            <Printer className="h-4 w-4 text-green-400" /> Imprimir
+          </button>
+
           <button 
             onClick={handleSaveToHistory}
             className="px-4 py-3 bg-[#39FF14] text-black font-bold rounded-xl hover:bg-[#7FFF00] transition flex items-center gap-2 text-sm"
           >
-            <Save className="h-4 w-4" /> Salvar Histórico
+            <Save className="h-4 w-4" /> Histórico
           </button>
+          
           <button 
             onClick={handleExportPdf}
             disabled={isExporting}

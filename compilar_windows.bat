@@ -20,7 +20,7 @@ echo.
 echo 4) Gerando o executavel (isso pode demorar varios segundos/minutos)...
 :: O pyinstaller empacota tudo em um único .exe escondendo a janela do console (--noconsole)
 :: e inclui (--add-data) a pasta dist gerada pelo React no executável
-pyinstaller --noconfirm --onedir --windowed --add-data "dist;dist" --name "Hack Document" main.py
+pyinstaller --noconfirm --onedir --windowed --add-data "dist;dist" --icon="imagem.ico" --name "Hack Document" main.py
 
 echo.
 echo =======================================

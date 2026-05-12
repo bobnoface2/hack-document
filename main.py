@@ -222,8 +222,16 @@ if __name__ == '__main__':
     t.start()
     
     if webview:
-        webview.create_window('Hack Document Pro', 'http://127.0.0.1:3000', width=1300, height=850)
-        webview.start()
+        icon_path = os.path.join(base_path, 'imagem.ico')
+        webview.create_window('Hack Document', 'http://127.0.0.1:3000', width=1300, height=850)
+        
+        if os.path.exists(icon_path):
+            try:
+                webview.start(icon=icon_path)
+            except TypeError:
+                webview.start()
+        else:
+            webview.start()
     else:
         print("Webview não disponível, rodando apenas como servidor em http://0.0.0.0:3000")
         t.join()
