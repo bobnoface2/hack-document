@@ -15,74 +15,30 @@ type Tab = 'dashboard' | 'generate' | 'templates' | 'history' | 'settings';
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const store = useAppStore();
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setIsMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // any initialization if needed
   }, []);
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-gray-100 font-sans selection:bg-[#39FF14] selection:text-black">
-      {/* Mobile Top Bar */}
-      <div className="lg:hidden h-16 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center justify-between px-6 z-[60]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden border border-[#39FF14]/30 bg-[#111]">
-            <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
-          </div>
-          <span className="font-bold text-sm tracking-tighter text-[#39FF14]">HACK DOCUMENT</span>
-        </div>
-        <button 
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 text-gray-400 hover:text-[#39FF14] transition-colors"
-        >
-          <Menu className="h-6 w-6" />
-        </button>
-      </div>
-
       <div className="flex flex-1 overflow-hidden relative">
-        
-        {/* Sidebar Overlay (Mobile) */}
-        <AnimatePresence>
-          {isMobileMenuOpen && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] lg:hidden"
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Sidebar */}
         <motion.div 
           initial={false}
-          animate={{ 
-            width: isSidebarOpen ? 260 : 80,
-            x: typeof window !== 'undefined' && window.innerWidth < 1024 
-               ? (isMobileMenuOpen ? 0 : -260) 
-               : 0
-          }}
+          animate={{ width: isSidebarOpen ? 260 : 80 }}
           transition={{ type: 'spring', damping: 20, stiffness: 100 }}
           className={cn(
-            "bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col h-full shadow-2xl fixed inset-y-0 left-0 z-[80] lg:relative lg:translate-x-0 overflow-hidden",
-            "lg:min-w-[80px]"
+            "bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col h-full shadow-2xl relative overflow-hidden shrink-0"
           )}
         >
           {/* Logo Section */}
-          <div className="h-20 flex items-center px-6 border-b border-[#1a1a1a] mb-6 overflow-hidden flex-shrink-0">
+          <div className="h-20 flex items-center px-6 border-b border-[#1a1a1a] flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-[#39FF14]/20 bg-[#111]">
                 <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
               </div>
-              {(isSidebarOpen || isMobileMenuOpen) && (
+              {isSidebarOpen && (
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -93,14 +49,16 @@ export default function App() {
                 </motion.div>
               )}
             </div>
-            {isMobileMenuOpen && (
-              <button 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="ml-auto p-2 lg:hidden text-gray-500 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
+          </div>
+
+          <div className="px-6 py-4 flex-shrink-0">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="flex items-center gap-2 text-gray-400 hover:text-[#39FF14] transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+              {isSidebarOpen && <span className="text-xs font-bold uppercase tracking-widest text-[#39FF14]">Recolher Menu</span>}
+            </button>
           </div>
 
           <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
@@ -108,48 +66,40 @@ export default function App() {
               icon={<LayoutDashboard className="h-5 w-5" />} 
               label="Dashboard" 
               active={activeTab === 'dashboard'} 
-              expanded={isSidebarOpen || isMobileMenuOpen}
-              onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }} 
+              expanded={isSidebarOpen}
+              onClick={() => { setActiveTab('dashboard'); }} 
             />
             <NavItem 
               icon={<FileText className="h-5 w-5" />} 
               label="Gerador de Doc" 
               active={activeTab === 'generate'} 
-              expanded={isSidebarOpen || isMobileMenuOpen}
-              onClick={() => { setActiveTab('generate'); setIsMobileMenuOpen(false); }} 
+              expanded={isSidebarOpen}
+              onClick={() => { setActiveTab('generate'); }} 
             />
             <NavItem 
               icon={<Code className="h-5 w-5" />} 
               label="Templates" 
               active={activeTab === 'templates'} 
-              expanded={isSidebarOpen || isMobileMenuOpen}
-              onClick={() => { setActiveTab('templates'); setIsMobileMenuOpen(false); }} 
+              expanded={isSidebarOpen}
+              onClick={() => { setActiveTab('templates'); }} 
             />
             <NavItem 
               icon={<History className="h-5 w-5" />} 
               label="Histórico Local" 
               active={activeTab === 'history'} 
-              expanded={isSidebarOpen || isMobileMenuOpen}
-              onClick={() => { setActiveTab('history'); setIsMobileMenuOpen(false); }} 
+              expanded={isSidebarOpen}
+              onClick={() => { setActiveTab('history'); }} 
             />
             <div className="pt-6 mt-6 border-t border-[#1a1a1a]">
               <NavItem 
                 icon={<Settings className="h-5 w-5" />} 
                 label="Configurações" 
                 active={activeTab === 'settings'} 
-                expanded={isSidebarOpen || isMobileMenuOpen}
-                onClick={() => { setActiveTab('settings'); setIsMobileMenuOpen(false); }} 
+                expanded={isSidebarOpen}
+                onClick={() => { setActiveTab('settings'); }} 
               />
             </div>
           </nav>
-
-          {/* Toggle Button (Desktop only) */}
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="hidden lg:flex absolute bottom-6 right-6 p-2 rounded-full bg-[#1a1a1a] text-[#39FF14] hover:bg-[#39FF14] hover:text-black transition-all"
-          >
-            {isSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
         </motion.div>
 
         {/* Main Content */}
@@ -174,13 +124,16 @@ export default function App() {
       </div>
       
       {/* Footer */}
-      <footer className="h-10 bg-[#0a0a0a] border-t border-[#1a1a1a] flex items-center justify-between px-4 md:px-10 text-[10px] font-mono text-gray-500 tracking-wider">
+      <footer className="h-10 bg-[#0a0a0a] border-t border-[#1a1a1a] flex items-center justify-between px-4 md:px-10 text-[10px] font-mono text-gray-500 tracking-wider relative">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3 text-[#39FF14]" /> SECURITY</span>
-          <span className="opacity-50 hidden sm:inline">DB: NODE_FS</span>
+          <span className="opacity-50 hidden sm:inline">DB: SQLITE</span>
         </div>
-        <div className="truncate pl-4">
-          <a href="https://wa.me/5521993367328" target="_blank" rel="noopener noreferrer" className="text-[#39FF14] hover:underline decoration-skip-ink">WALLACE ARÃO</a> © 2024
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 truncate text-center w-full max-w-[200px] sm:max-w-none pointer-events-auto">
+          <a href="https://wa.me/5521993367328" target="_blank" rel="noopener noreferrer" className="text-[#39FF14] hover:underline decoration-skip-ink">WALLACE ARÃO</a> © {new Date().getFullYear()}
+        </div>
+        <div className="hidden sm:block opacity-50 text-right">
+          VERSÃO 1.0.0
         </div>
       </footer>
     </div>
@@ -488,33 +441,86 @@ function GenerateView({ store }: { store: any }) {
                   <Mail className="h-3 w-3 text-orange-400" /> Enviar E-mail
                </button>
      
-               <button 
-                 onClick={() => {
-                   const iframe = document.createElement('iframe');
-                   iframe.style.position = 'fixed';
-                   iframe.style.right = '0';
-                   iframe.style.bottom = '0';
-                   iframe.style.width = '0';
-                   iframe.style.height = '0';
-                   iframe.style.border = '0';
-                   document.body.appendChild(iframe);
-                   const doc = iframe.contentWindow?.document;
-                   if (doc) {
-                     const isHtml = template?.format === 'html';
-                     const printContent = isHtml ? finalContent : `<pre style="white-space: pre-wrap; font-family: inherit; font-size: 14px;">${finalContent}</pre>`;
-                     doc.write(`<html><head><title>${template?.name || 'Documento'}</title><style>body { font-family: sans-serif; margin: 20px; line-height: 1.5; } pre { white-space: pre-wrap; font-family: inherit; }</style></head><body>${printContent}</body></html>`);
-                     doc.close();
-                     setTimeout(() => {
-                       iframe.contentWindow?.focus();
-                       iframe.contentWindow?.print();
-                       setTimeout(() => document.body.removeChild(iframe), 1000);
-                     }, 200);
-                   }
-                 }}
-                 className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
-               >
-                 <Printer className="h-3 w-3 text-green-400" /> Imprimir Documento
-               </button>
+                <button 
+                  onClick={() => {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.position = 'fixed';
+                    iframe.style.right = '0';
+                    iframe.style.bottom = '0';
+                    iframe.style.width = '0';
+                    iframe.style.height = '0';
+                    iframe.style.border = '0';
+                    document.body.appendChild(iframe);
+                    const doc = iframe.contentWindow?.document;
+                    if (doc) {
+                      const isHtml = template?.format === 'html';
+                      const printContent = isHtml ? finalContent : `<pre style="white-space: pre-wrap; font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; text-align: justify;">${finalContent}</pre>`;
+                      
+                      doc.write(`
+                        <html>
+                          <head>
+                            <title>${template?.name || 'Documento'}</title>
+                            <style>
+                              @page { margin: 2.5cm; }
+                              body { 
+                                font-family: 'Times New Roman', Times, serif; 
+                                margin: 0; 
+                                font-size: 12pt; 
+                                line-height: 1.6; 
+                                color: #000;
+                                background: white;
+                              }
+                              h1, h2, h3 { text-align: center; }
+                              pre { 
+                                white-space: pre-wrap; 
+                                word-wrap: break-word; 
+                                font-family: inherit; 
+                                margin: 0;
+                              }
+                              .prose { width: 100%; }
+                              .prose table { width: 100%; border-collapse: collapse; }
+                              .prose td, .prose th { border: 1px solid #ddd; padding: 8px; }
+                              
+                              /* Estilo para assinaturas na impressão */
+                              .sig-container {
+                                margin-top: 60px;
+                                display: flex;
+                                flex-wrap: wrap;
+                                justify-content: space-around;
+                                width: 100%;
+                                page-break-inside: avoid;
+                              }
+                              .sig-box {
+                                text-align: center;
+                                padding: 20px;
+                                flex: 1;
+                                min-width: 250px;
+                              }
+                              .sig-line {
+                                border: 0;
+                                border-top: 1px solid #000;
+                                width: 80%;
+                                margin: 0 auto 10px auto;
+                              }
+                            </style>
+                          </head>
+                          <body>
+                            <div class="prose">${printContent}</div>
+                          </body>
+                        </html>
+                      `);
+                      doc.close();
+                      setTimeout(() => {
+                        iframe.contentWindow?.focus();
+                        iframe.contentWindow?.print();
+                        setTimeout(() => document.body.removeChild(iframe), 1000);
+                      }, 400);
+                    }
+                  }}
+                  className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
+                >
+                  <Printer className="h-3 w-3 text-green-400" /> Imprimir Documento
+                </button>
      
                <button 
                  onClick={handleSaveToHistory}
@@ -566,6 +572,90 @@ function GenerateView({ store }: { store: any }) {
           </div>
         </div>
       </div>
+
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#050505] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6">
+            <h3 className="text-white font-bold text-lg mb-4">Adicionar Assinaturas</h3>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+               {signatures.map((sig, i) => (
+                  <div key={i} className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-3 relative group">
+                     <div className="flex justify-between items-center mb-1">
+                       <label className="text-xs font-bold text-gray-400 uppercase">Assinatura {i + 1}</label>
+                       {signatures.length > 1 && (
+                         <button onClick={() => setSignatures(s => s.filter((_, idx) => idx !== i))} className="text-gray-500 hover:text-red-500 transition-colors">
+                           <Trash2 className="h-4 w-4" />
+                         </button>
+                       )}
+                     </div>
+                     <input 
+                       placeholder="Nome (Ex: Assinatura Editável)" 
+                       value={sig.name} 
+                       onChange={e => { const s = [...signatures]; s[i].name = e.target.value; setSignatures(s); }} 
+                       className="w-full bg-black border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none" 
+                     />
+                     <input 
+                       placeholder="Cargo / Documento (Ex: Nome/Cargo)" 
+                       value={sig.role} 
+                       onChange={e => { const s = [...signatures]; s[i].role = e.target.value; setSignatures(s); }} 
+                       className="w-full bg-black border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none" 
+                     />
+                  </div>
+               ))}
+            </div>
+            <button 
+              onClick={() => setSignatures(s => [...s, {name:'', role:''}])} 
+              className="w-full py-3 mt-4 border border-dashed border-[#1a1a1a] rounded-xl text-gray-400 hover:text-[#39FF14] hover:border-[#39FF14]/50 transition-colors text-sm font-bold flex items-center justify-center gap-2"
+            >
+               <Plus className="h-4 w-4" /> Adicionar Mais Uma
+            </button>
+
+            <div className="flex gap-3 mt-6">
+               <button 
+                 onClick={() => setShowSignatureModal(false)} 
+                 className="flex-1 py-3 bg-[#1a1a1a] rounded-xl text-white text-sm font-bold hover:bg-[#222] transition-colors"
+               >
+                 Cancelar
+               </button>
+                <button 
+                  onClick={() => {
+                    let sigsText = "";
+                    if (template?.format === 'html') {
+                       const numSigs = signatures.length;
+                       const sigNodes = signatures.map(sig => `
+                         <div class="sig-box" style="text-align: center; width: ${Math.floor(100/numSigs)}%; min-width: 200px; padding: 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <hr class="sig-line" style="border: 0; border-top: 1px solid #000; width: 250px; max-width: 100%; margin: 0 auto 10px auto;" />
+                            <p style="font-family: sans-serif; font-size: 14px; margin: 0; font-weight: bold; text-align: center; width: 100%;">${sig.name || 'Assinatura'}</p>
+                            ${sig.role ? `<p style="font-family: sans-serif; font-size: 12px; margin: 4px 0 0 0; color: #555; text-align: center; width: 100%;">${sig.role}</p>` : ''}
+                         </div>
+                       `).join('');
+                       sigsText = `\n<div class="sig-container" style="margin-top: 80px; display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; border: 0 !important; outline: none !important;">${sigNodes}</div>\n`;
+                    } else {
+                       const centerText = (text: string, width: number) => {
+                          if (text.length >= width) return text;
+                          const pad = Math.floor((width - text.length) / 2);
+                          return ' '.repeat(pad) + text;
+                       };
+                       const sigNodes = signatures.map(sig => {
+                         const line = "_____________________________________________";
+                         const name = centerText(sig.name || 'Assinatura', line.length);
+                         const role = sig.role ? '\n' + centerText(sig.role, line.length) : '';
+                         return `\n\n\n${line}\n${name}${role}`;
+                       }).join('');
+                       sigsText = `\n\n${sigNodes}\n`;
+                    }
+                    setFinalContent(prev => prev + sigsText);
+                    setShowSignatureModal(false);
+                    setSignatures([{name:'', role:''}]);
+                  }} 
+                  className="flex-1 py-3 bg-[#39FF14] text-black rounded-xl text-sm font-bold hover:bg-[#7FFF00] transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Inserir
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -888,90 +978,6 @@ function SettingsView({ store }: { store: any }) {
           </section>
         </div>
       </div>
-
-      {showSignatureModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#050505] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6">
-            <h3 className="text-white font-bold text-lg mb-4">Adicionar Assinaturas</h3>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-               {signatures.map((sig, i) => (
-                  <div key={i} className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-3 relative group">
-                     <div className="flex justify-between items-center mb-1">
-                       <label className="text-xs font-bold text-gray-400 uppercase">Assinatura {i + 1}</label>
-                       {signatures.length > 1 && (
-                         <button onClick={() => setSignatures(s => s.filter((_, idx) => idx !== i))} className="text-gray-500 hover:text-red-500 transition-colors">
-                           <Trash2 className="h-4 w-4" />
-                         </button>
-                       )}
-                     </div>
-                     <input 
-                       placeholder="Nome (Ex: Assinatura Editável)" 
-                       value={sig.name} 
-                       onChange={e => { const s = [...signatures]; s[i].name = e.target.value; setSignatures(s); }} 
-                       className="w-full bg-black border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none" 
-                     />
-                     <input 
-                       placeholder="Cargo / Documento (Ex: Nome/Cargo)" 
-                       value={sig.role} 
-                       onChange={e => { const s = [...signatures]; s[i].role = e.target.value; setSignatures(s); }} 
-                       className="w-full bg-black border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none" 
-                     />
-                  </div>
-               ))}
-            </div>
-            <button 
-              onClick={() => setSignatures(s => [...s, {name:'', role:''}])} 
-              className="w-full py-3 mt-4 border border-dashed border-[#1a1a1a] rounded-xl text-gray-400 hover:text-[#39FF14] hover:border-[#39FF14]/50 transition-colors text-sm font-bold flex items-center justify-center gap-2"
-            >
-               <Plus className="h-4 w-4" /> Adicionar Mais Uma
-            </button>
-
-            <div className="flex gap-3 mt-6">
-               <button 
-                 onClick={() => setShowSignatureModal(false)} 
-                 className="flex-1 py-3 bg-[#1a1a1a] rounded-xl text-white text-sm font-bold hover:bg-[#222] transition-colors"
-               >
-                 Cancelar
-               </button>
-               <button 
-                 onClick={() => {
-                    let sigsText = "";
-                    if (template?.format === 'html') {
-                       const numSigs = signatures.length;
-                       const sigNodes = signatures.map(sig => `
-                         <div style="text-align: center; width: ${Math.floor(100/numSigs)}%; min-width: 200px; padding: 20px;">
-                            <hr style="border: 0; border-top: 1px solid #000; margin-bottom: 10px;" />
-                            <p style="font-family: sans-serif; font-size: 14px; margin: 0; font-weight: bold;">${sig.name || 'Assinatura'}</p>
-                            ${sig.role ? `<p style="font-family: sans-serif; font-size: 12px; margin: 4px 0 0 0; color: #555;">${sig.role}</p>` : ''}
-                         </div>
-                       `).join('');
-                       sigsText = `\n<div style="margin-top: 60px; display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; border: 0 !important; outline: none !important;">${sigNodes}</div>\n`;
-                    } else {
-                       const centerText = (text: string, width: number) => {
-                          if (text.length >= width) return text;
-                          const pad = Math.floor((width - text.length) / 2);
-                          return ' '.repeat(pad) + text;
-                       };
-                       const sigNodes = signatures.map(sig => {
-                         const line = "____________________________________";
-                         const name = centerText(sig.name || 'Assinatura', line.length);
-                         const role = sig.role ? '\n' + centerText(sig.role, line.length) : '';
-                         return `\n\n\n${line}\n${name}${role}`;
-                       }).join('');
-                       sigsText = `\n\n${sigNodes}\n`;
-                    }
-                    setFinalContent(prev => prev + sigsText);
-                    setShowSignatureModal(false);
-                    setSignatures([{name:'', role:''}]);
-                 }} 
-                 className="flex-1 py-3 bg-[#39FF14] text-black rounded-xl text-sm font-bold hover:bg-[#7FFF00] transition-colors flex items-center justify-center gap-2"
-               >
-                 <Plus className="h-4 w-4" /> Inserir
-               </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

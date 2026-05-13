@@ -4,48 +4,37 @@ import json
 import sqlite3
 import smtplib
 import threading
-import base64
+import io
+import urllib.request
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify, send_from_directory, make_response
 from flask_cors import CORS
-# Removed genai
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
-import io
+from reportlab.lib.pagesizes import A4
 
+# Tenta importar o webview para criar a janela do desktop estilo aplicativo
 try:
     import webview
 except ImportError:
     webview = None
 
 def get_base_path():
+    """ Retorna o caminho base do app, lidando com o empacotamento do PyInstaller """
     if getattr(sys, 'frozen', False):
         return sys._MEIPASS
     return os.path.dirname(os.path.abspath(__file__))
 
-# Banco de dados centralizado
-DB_FILE = os.path.join(os.path.expanduser("~"), "HackDocumentProV3.db")
+# Banco de dados centralizado na pasta do usuário para persistência
+DB_FILE = os.path.join(os.path.expanduser("~"), "HackDocumentPro_Data.db")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Tabela genérica de store
-    c.execute('''CREATE TABLE IF NOT EXISTS store (
-                    key TEXT PRIMARY KEY,
-                    value TEXT
-                 )''')
-    # Tabela de logs de envio
-    c.execute('''CREATE TABLE IF NOT EXISTS sent_logs (
-                    id TEXT PRIMARY KEY,
-                    to_email TEXT,
-                    subject TEXT,
-                    timestamp TEXT,
-                    status TEXT
-                 )''')
+    c.execute('CREATE TABLE IF NOT EXISTS store (key TEXT PRIMARY KEY, value TEXT)')
+    c.execute('CREATE TABLE IF NOT EXISTS sent_logs (id TEXT PRIMARY KEY, to_email TEXT, subject TEXT, timestamp TEXT, status TEXT)')
     conn.commit()
     conn.close()
 
@@ -83,158 +72,108 @@ def api_store():
         data = request.json
         db_set(data.get('key'), data.get('value'))
         return jsonify({"success": True})
-    else:
-        key = request.args.get('key', '')
-        return jsonify({"value": db_get(key)})
-
-import urllib.request
+    return jsonify({"value": db_get(request.args.get('key', ''))})
 
 @app.route('/api/ai/refine', methods=['POST'])
 def ai_refine():
     data = request.json
-    prompt = data.get('prompt')
-    content = data.get('content')
-    
     try:
-        full_prompt = f"{prompt}\n\nAplique isso ao seguinte texto (retorne apenas o texto modificado):\n\n{content}"
-        
+        full_prompt = f"{data.get('prompt')}\n\nAplique isso ao texto:\n\n{data.get('content')}"
         req = urllib.request.Request(
             'http://127.0.0.1:11434/api/generate',
-            data=json.dumps({
-                "model": "llama3",
-                "prompt": full_prompt,
-                "stream": False
-            }).encode('utf-8'),
+            data=json.dumps({"model": "llama3", "prompt": full_prompt, "stream": False}).encode('utf-8'),
             headers={'Content-Type': 'application/json'},
             method='POST'
         )
         with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode('utf-8'))
             return jsonify({"refinedContent": result.get("response", "")})
-            
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/export/pdf', methods=['POST'])
 def export_pdf():
     data = request.json
-    content = data.get('content', '')
-    filename = data.get('filename', 'documento.pdf')
-    
+    content = data.get('content', '').replace('\n', '<br/>')
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
-    styles = getSampleStyleSheet()
-    
-    # Converter quebras de linha em <br/>
-    clean_content = content.replace('\n', '<br/>')
-    
-    story = []
-    story.append(Paragraph(clean_content, styles["Normal"]))
-    doc.build(story)
-    
+    doc.build([Paragraph(content, getSampleStyleSheet()["Normal"])])
     pdf_value = buffer.getvalue()
     buffer.close()
-    
     response = make_response(pdf_value)
     response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    response.headers['Content-Disposition'] = f'attachment; filename={data.get("filename", "doc.pdf")}'
     return response
 
 @app.route('/api/send-email', methods=['POST'])
 def send_email():
     data = request.json
-    smtp_user = data.get('smtpUser')
-    smtp_pass = data.get('smtpPass')
-    to_email = data.get('to')
-    subject = data.get('subject')
-    html_content = data.get('html')
-
-    if not smtp_user or not smtp_pass:
-        return jsonify({"error": "Faltam credenciais SMTP"}), 400
-
     try:
         msg = MIMEMultipart()
-        msg['From'] = f"DocuMestre Pro <{smtp_user}>"
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(html_content, 'html'))
-
+        msg['From'] = f"HackDocument <{data.get('smtpUser')}>"
+        msg['To'] = data.get('to')
+        msg['Subject'] = data.get('subject')
+        msg.attach(MIMEText(data.get('html'), 'html'))
         host = "smtp.mail.yahoo.com"
-        if "gmail" in smtp_user.lower(): host = "smtp.gmail.com"
-        elif "outlook" in smtp_user.lower() or "hotmail" in smtp_user.lower(): host = "smtp.office365.com"
-
+        if "gmail" in data.get('smtpUser').lower(): host = "smtp.gmail.com"
+        elif "outlook" in data.get('smtpUser').lower() or "hotmail" in data.get('smtpUser').lower(): host = "smtp.office365.com"
         server = smtplib.SMTP_SSL(host, 465)
-        server.login(smtp_user, smtp_pass)
+        server.login(data.get('smtpUser'), data.get('smtpPass'))
         server.send_message(msg)
         server.quit()
-        
-        add_sent_log(to_email, subject, "Sucesso")
+        add_sent_log(data.get('to'), data.get('subject'), "Sucesso")
         return jsonify({"success": True})
     except Exception as e:
-        add_sent_log(to_email, subject, f"Erro: {str(e)}")
+        add_sent_log(data.get('to'), data.get('subject'), f"Erro: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/logs', methods=['GET'])
 def get_logs():
     conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('SELECT * FROM sent_logs ORDER BY id DESC LIMIT 100')
-    rows = c.fetchall()
+    rows = conn.execute('SELECT * FROM sent_logs ORDER BY id DESC LIMIT 100').fetchall()
     conn.close()
-    
-    logs = []
-    for r in rows:
-        logs.append({
-            "id": r[0],
-            "to": r[1],
-            "subject": r[2],
-            "timestamp": r[3],
-            "status": r[4]
-        })
-    return jsonify(logs)
+    return jsonify([{"id": r[0], "to": r[1], "subject": r[2], "timestamp": r[3], "status": r[4]} for r in rows])
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
     base_path = get_base_path()
+    # Serve o ícone se solicitado como favicon ou logo
+    if path == "imagem.ico":
+        if os.path.exists(os.path.join(base_path, 'imagem.ico')):
+            return send_from_directory(base_path, 'imagem.ico')
     dist_folder = os.path.join(base_path, 'dist')
-    
-    if path == "imagem.ico" and os.path.exists(os.path.join(base_path, 'imagem.ico')):
-        return send_from_directory(base_path, 'imagem.ico')
-        
     if path != "" and os.path.exists(os.path.join(dist_folder, path)):
         return send_from_directory(dist_folder, path)
-    else:
-        return send_from_directory(dist_folder, 'index.html')
+    return send_from_directory(dist_folder, 'index.html')
 
-def start_server():
-    # Porta 3000 é obrigatoria no ambiente do preview
-    app.run(host='0.0.0.0', port=3000, debug=False)
+def run_flask():
+    # Roda o Flask localmente
+    app.run(host='127.0.0.1', port=3000, debug=False)
 
 if __name__ == '__main__':
     init_db()
     base_path = get_base_path()
-    dist_folder = os.path.join(base_path, 'dist')
     
-    if not os.path.exists(dist_folder):
-        os.makedirs(dist_folder, exist_ok=True)
-        with open(os.path.join(dist_folder, 'index.html'), 'w') as f:
-            f.write("<h1>Interface sendo preparada... Recompile o projeto.</h1>")
-
-    t = threading.Thread(target=start_server, daemon=True)
-    t.start()
+    # Thread para o servidor Flask não travar a UI
+    server_thread = threading.Thread(target=run_flask, daemon=True)
+    server_thread.start()
     
+    # Inicia a interface gráfica com PyWebView (Desktop Mode)
     if webview:
         icon_path = os.path.join(base_path, 'imagem.ico')
-        webview.create_window('Hack Document', 'http://127.0.0.1:3000', width=1300, height=850)
+        window = webview.create_window('Hack Document PRO', 'http://127.0.0.1:3000', width=1280, height=800)
         
+        # Inicia com o ícone se disponível
         if os.path.exists(icon_path):
             try:
                 webview.start(icon=icon_path)
-            except TypeError:
+            except:
                 webview.start()
         else:
             webview.start()
     else:
-        print("Webview não disponível, rodando apenas como servidor em http://0.0.0.0:3000")
-        t.join()
+        # Fallback caso não tenha webview instalado
+        import webbrowser
+        webbrowser.open('http://127.0.0.1:3000')
+        server_thread.join()
