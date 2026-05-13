@@ -46,6 +46,15 @@ async function startServer() {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
 
+  app.get('/imagem.ico', (req, res) => {
+    const icoPath = path.join(process.cwd(), 'imagem.ico');
+    res.sendFile(icoPath, err => {
+      if (err) {
+        res.status(404).send('Icon not found');
+      }
+    });
+  });
+
   // API: Store
   app.post('/api/store', async (req, res) => {
     try {

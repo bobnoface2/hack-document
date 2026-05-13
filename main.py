@@ -199,6 +199,9 @@ def serve(path):
     base_path = get_base_path()
     dist_folder = os.path.join(base_path, 'dist')
     
+    if path == "imagem.ico" and os.path.exists(os.path.join(base_path, 'imagem.ico')):
+        return send_from_directory(base_path, 'imagem.ico')
+        
     if path != "" and os.path.exists(os.path.join(dist_folder, path)):
         return send_from_directory(dist_folder, path)
     else:

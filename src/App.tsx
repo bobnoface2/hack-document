@@ -34,7 +34,7 @@ export default function App() {
       <div className="lg:hidden h-16 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center justify-between px-6 z-[60]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden border border-[#39FF14]/30 bg-[#111]">
-            <img src="/logo.png" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
+            <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
           </div>
           <span className="font-bold text-sm tracking-tighter text-[#39FF14]">HACK DOCUMENT</span>
         </div>
@@ -80,7 +80,7 @@ export default function App() {
           <div className="h-20 flex items-center px-6 border-b border-[#1a1a1a] mb-6 overflow-hidden flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-[#39FF14]/20 bg-[#111]">
-                <img src="/logo.png" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
+                <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
               </div>
               {(isSidebarOpen || isMobileMenuOpen) && (
                 <motion.div 
@@ -500,7 +500,9 @@ function GenerateView({ store }: { store: any }) {
                    document.body.appendChild(iframe);
                    const doc = iframe.contentWindow?.document;
                    if (doc) {
-                     doc.write(`<html><head><title>${template?.name || 'Documento'}</title><style>body { font-family: sans-serif; margin: 20px; }</style></head><body>${finalContent}</body></html>`);
+                     const isHtml = template?.format === 'html';
+                     const printContent = isHtml ? finalContent : `<pre style="white-space: pre-wrap; font-family: inherit; font-size: 14px;">${finalContent}</pre>`;
+                     doc.write(`<html><head><title>${template?.name || 'Documento'}</title><style>body { font-family: sans-serif; margin: 20px; line-height: 1.5; } pre { white-space: pre-wrap; font-family: inherit; }</style></head><body>${printContent}</body></html>`);
                      doc.close();
                      setTimeout(() => {
                        iframe.contentWindow?.focus();
@@ -945,8 +947,16 @@ function SettingsView({ store }: { store: any }) {
                        `).join('');
                        sigsText = `\n<div style="margin-top: 60px; display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; border: 0 !important; outline: none !important;">${sigNodes}</div>\n`;
                     } else {
+                       const centerText = (text: string, width: number) => {
+                          if (text.length >= width) return text;
+                          const pad = Math.floor((width - text.length) / 2);
+                          return ' '.repeat(pad) + text;
+                       };
                        const sigNodes = signatures.map(sig => {
-                         return `\n\n________________________________________________\n${sig.name || 'Assinatura'}${sig.role ? '\n' + sig.role : ''}`;
+                         const line = "____________________________________";
+                         const name = centerText(sig.name || 'Assinatura', line.length);
+                         const role = sig.role ? '\n' + centerText(sig.role, line.length) : '';
+                         return `\n\n\n${line}\n${name}${role}`;
                        }).join('');
                        sigsText = `\n\n${sigNodes}\n`;
                     }
