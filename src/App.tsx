@@ -281,6 +281,8 @@ function GenerateView({ store }: { store: any }) {
   const [selectedId, setSelectedId] = useState(store.templates[0]?.id || '');
   const [vars, setVars] = useState<Record<string, string>>({});
   const [finalContent, setFinalContent] = useState('');
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatures, setSignatures] = useState([{ name: '', role: '' }]);
   const [isExporting, setIsExporting] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -455,21 +457,7 @@ function GenerateView({ store }: { store: any }) {
              </h3>
              <div className="flex flex-wrap items-center gap-2">
                <button 
-                 onClick={() => {
-                   const sigs = `
-                     <div style="margin-top: 60px; display: flex; justify-content: space-around; width: 100%;">
-                       <div style="text-align: center; width: 45%;">
-                          <hr style="border: 0; border-top: 1px solid #000; margin-bottom: 10px;" />
-                          <p style="font-family: sans-serif; font-size: 14px; margin: 0;">Assinatura Editável</p>
-                       </div>
-                       <div style="text-align: center; width: 45%;">
-                          <hr style="border: 0; border-top: 1px solid #000; margin-bottom: 10px;" />
-                          <p style="font-family: sans-serif; font-size: 14px; margin: 0;">Nome/Cargo</p>
-                       </div>
-                     </div>
-                   `;
-                   setFinalContent(prev => prev + sigs);
-                 }}
+                 onClick={() => setShowSignatureModal(true)}
                  className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
                >
                   <Plus className="h-3 w-3" /> Assinaturas
@@ -898,6 +886,82 @@ function SettingsView({ store }: { store: any }) {
           </section>
         </div>
       </div>
+
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#050505] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6">
+            <h3 className="text-white font-bold text-lg mb-4">Adicionar Assinaturas</h3>
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+               {signatures.map((sig, i) => (
+                  <div key={i} className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-3 relative group">
+                     <div className="flex justify-between items-center mb-1">
+                       <label className="text-xs font-bold text-gray-400 uppercase">Assinatura {i + 1}</label>
+                       {signatures.length > 1 && (
+                         <button onClick={() => setSignatures(s => s.filter((_, idx) => idx !== i))} className="text-gray-500 hover:text-red-500 transition-colors">
+                           <Trash2 className="h-4 w-4" />
+                         </button>
+                       )}
+                     </div>
+                     <input 
+                       placeholder="Nome (Ex: Assinatura Editável)" 
+                       value={sig.name} 
+                       onChange={e => { const s = [...signatures]; s[i].name = e.target.value; setSignatures(s); }} 
+                       className="w-full bg-black border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none" 
+                     />
+                     <input 
+                       placeholder="Cargo / Documento (Ex: Nome/Cargo)" 
+                       value={sig.role} 
+                       onChange={e => { const s = [...signatures]; s[i].role = e.target.value; setSignatures(s); }} 
+                       className="w-full bg-black border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none" 
+                     />
+                  </div>
+               ))}
+            </div>
+            <button 
+              onClick={() => setSignatures(s => [...s, {name:'', role:''}])} 
+              className="w-full py-3 mt-4 border border-dashed border-[#1a1a1a] rounded-xl text-gray-400 hover:text-[#39FF14] hover:border-[#39FF14]/50 transition-colors text-sm font-bold flex items-center justify-center gap-2"
+            >
+               <Plus className="h-4 w-4" /> Adicionar Mais Uma
+            </button>
+
+            <div className="flex gap-3 mt-6">
+               <button 
+                 onClick={() => setShowSignatureModal(false)} 
+                 className="flex-1 py-3 bg-[#1a1a1a] rounded-xl text-white text-sm font-bold hover:bg-[#222] transition-colors"
+               >
+                 Cancelar
+               </button>
+               <button 
+                 onClick={() => {
+                    let sigsText = "";
+                    if (template?.format === 'html') {
+                       const numSigs = signatures.length;
+                       const sigNodes = signatures.map(sig => `
+                         <div style="text-align: center; width: ${Math.floor(100/numSigs)}%; min-width: 200px; padding: 20px;">
+                            <hr style="border: 0; border-top: 1px solid #000; margin-bottom: 10px;" />
+                            <p style="font-family: sans-serif; font-size: 14px; margin: 0; font-weight: bold;">${sig.name || 'Assinatura'}</p>
+                            ${sig.role ? `<p style="font-family: sans-serif; font-size: 12px; margin: 4px 0 0 0; color: #555;">${sig.role}</p>` : ''}
+                         </div>
+                       `).join('');
+                       sigsText = `\n<div style="margin-top: 60px; display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; border: 0 !important; outline: none !important;">${sigNodes}</div>\n`;
+                    } else {
+                       const sigNodes = signatures.map(sig => {
+                         return `\n\n________________________________________________\n${sig.name || 'Assinatura'}${sig.role ? '\n' + sig.role : ''}`;
+                       }).join('');
+                       sigsText = `\n\n${sigNodes}\n`;
+                    }
+                    setFinalContent(prev => prev + sigsText);
+                    setShowSignatureModal(false);
+                    setSignatures([{name:'', role:''}]);
+                 }} 
+                 className="flex-1 py-3 bg-[#39FF14] text-black rounded-xl text-sm font-bold hover:bg-[#7FFF00] transition-colors flex items-center justify-center gap-2"
+               >
+                 <Plus className="h-4 w-4" /> Inserir
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
