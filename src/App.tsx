@@ -10,7 +10,7 @@ import { generateId, extractVariables, replaceVariables, cn } from './lib/utils'
 import { Template, GeneratedDocument } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Tab = 'dashboard' | 'generate' | 'templates' | 'history' | 'settings';
+type Tab = 'dashboard' | 'generate' | 'templates'  | 'history' | 'settings';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -24,17 +24,20 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-gray-100 font-sans selection:bg-[#39FF14] selection:text-black">
       <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar */}
         <motion.div 
           initial={false}
-          animate={{ width: isSidebarOpen ? 260 : 80 }}
+          animate={{ 
+            width: isSidebarOpen ? 260 : 80
+          }}
           transition={{ type: 'spring', damping: 20, stiffness: 100 }}
           className={cn(
             "bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col h-full shadow-2xl relative overflow-hidden shrink-0"
           )}
         >
           {/* Logo Section */}
-          <div className="h-20 flex items-center px-6 border-b border-[#1a1a1a] flex-shrink-0">
-            <div className="flex items-center gap-3">
+          <div className="h-20 flex items-center px-6 border-b border-[#1a1a1a] flex-shrink-0 relative">
+            <div className="flex items-center gap-3 w-full">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-[#39FF14]/20 bg-[#111]">
                 <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
               </div>
@@ -44,8 +47,8 @@ export default function App() {
                   animate={{ opacity: 1 }}
                   className="flex flex-col"
                 >
-                  <span className="font-bold text-lg tracking-tight leading-none text-[#39FF14]">HACK DOCUMENT</span>
-                  <span className="text-[10px] font-mono text-gray-500 mt-1 uppercase tracking-widest">Enterprise Pro</span>
+                  <span className="font-bold text-lg tracking-tight leading-none text-[#39FF14] whitespace-nowrap">HACK DOCS</span>
+                  <span className="text-[10px] font-mono text-gray-500 mt-1 uppercase tracking-widest whitespace-nowrap">Enterprise Pro</span>
                 </motion.div>
               )}
             </div>
@@ -57,7 +60,7 @@ export default function App() {
               className="flex items-center gap-2 text-gray-400 hover:text-[#39FF14] transition-colors"
             >
               <Menu className="h-5 w-5" />
-              {isSidebarOpen && <span className="text-xs font-bold uppercase tracking-widest text-[#39FF14]">Recolher Menu</span>}
+              {isSidebarOpen && <span className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[#39FF14]">Recolher Menu</span>}
             </button>
           </div>
 
@@ -111,7 +114,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="p-4 md:p-10 h-full"
+              className="p-10 min-h-full"
             >
               {activeTab === 'dashboard' && <DashboardView store={store} onAction={() => setActiveTab('generate')} />}
               {activeTab === 'generate' && <GenerateView store={store} />}
@@ -124,15 +127,15 @@ export default function App() {
       </div>
       
       {/* Footer */}
-      <footer className="h-10 bg-[#0a0a0a] border-t border-[#1a1a1a] flex items-center justify-between px-4 md:px-10 text-[10px] font-mono text-gray-500 tracking-wider relative">
+      <footer className="h-10 bg-[#0a0a0a] border-t border-[#1a1a1a] flex items-center justify-between px-4 px-10 text-[10px] font-mono text-gray-500 tracking-wider relative">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3 text-[#39FF14]" /> SECURITY</span>
-          <span className="opacity-50 hidden sm:inline">DB: SQLITE</span>
+          <span className="opacity-50 hidden inline">DB: SQLITE</span>
         </div>
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 truncate text-center w-full max-w-[200px] sm:max-w-none pointer-events-auto">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 truncate text-center w-full max-w-[200px] max-w-none pointer-events-auto">
           <a href="https://wa.me/5521993367328" target="_blank" rel="noopener noreferrer" className="text-[#39FF14] hover:underline decoration-skip-ink">WALLACE ARÃO</a> © {new Date().getFullYear()}
         </div>
-        <div className="hidden sm:block opacity-50 text-right">
+        <div className="hidden block opacity-50 text-right">
           VERSÃO 1.0.0
         </div>
       </footer>
@@ -150,15 +153,14 @@ function DashboardView({ store, onAction }: { store: any, onAction: () => void }
         <p className="text-gray-500 font-mono text-sm uppercase tracking-widest">Painel de Controle Enterprise</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+      <div className="grid grid-cols-1 grid-cols-3 gap-6 mb-12">
         <StatCard icon={<FileText className="text-[#39FF14]" />} label="Templates Salvos" value={store.templates.length} color="green" />
         <StatCard icon={<Printer className="text-blue-400" />} label="Docs Gerados" value={store.documents.length} color="blue" />
-        <StatCard icon={<Sparkles className="text-purple-400" />} label="Créditos IA" value="Ilimitado" color="purple" />
         <StatCard icon={<Send className="text-orange-400" />} label="E-mails Enviados" value={store.documents.length * 0.8 | 0} color="orange" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 grid-cols-3 gap-8">
+        <div className="col-span-2 space-y-6">
           <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-lg flex items-center gap-2"><Clock className="h-5 w-5 text-[#39FF14]" /> Atividade Recente</h3>
@@ -191,36 +193,20 @@ function DashboardView({ store, onAction }: { store: any, onAction: () => void }
         </div>
 
         <div className="space-y-6">
-          <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6 relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 opacity-5 group-hover:rotate-12 transition-transform duration-700">
-                <Sparkles className="w-24 h-24 text-[#39FF14]" />
-            </div>
-            <h3 className="font-bold text-lg text-white mb-4">DocuMestre AI</h3>
-            <p className="text-sm text-gray-400 leading-relaxed mb-6">
-              Aproveite o poder do Gemini 1.5 Flash para refinar seus contratos, sugerir melhorias e traduzir documentos instantaneamente.
-            </p>
-            <button 
-              onClick={onAction}
-              className="w-full py-3 bg-[#39FF14] text-black font-bold rounded-xl hover:bg-[#7FFF00] transition-colors flex items-center justify-center gap-2"
-            >
-              Iniciar Geração Produtiva <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-
           <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6">
             <h3 className="font-bold text-sm text-gray-500 uppercase tracking-widest mb-4">Informações do Sistema</h3>
             <ul className="space-y-3">
               <li className="flex justify-between text-xs">
                 <span className="text-gray-500">Versão:</span>
-                <span className="text-white font-mono">v3.0.4-PRO</span>
+                <span className="text-white font-mono">v4.0.0-OFFLINE</span>
               </li>
               <li className="flex justify-between text-xs">
                 <span className="text-gray-500">Storage:</span>
-                <span className="text-white font-mono">Persistent JSON/SQL</span>
+                <span className="text-white font-mono">Persistent JSON</span>
               </li>
               <li className="flex justify-between text-xs">
-                <span className="text-gray-500">Status API:</span>
-                <span className="text-[#39FF14] font-bold">ONLINE</span>
+                <span className="text-gray-500">Modo:</span>
+                <span className="text-[#39FF14] font-bold">OFFLINE SERVER</span>
               </li>
             </ul>
           </div>
@@ -237,8 +223,6 @@ function GenerateView({ store }: { store: any }) {
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [signatures, setSignatures] = useState([{ name: '', role: '' }]);
   const [isExporting, setIsExporting] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-
   const template = store.templates.find((t: any) => t.id === selectedId);
   const detected = template ? extractVariables(template.content) : [];
 
@@ -247,30 +231,6 @@ function GenerateView({ store }: { store: any }) {
       setFinalContent(replaceVariables(template.content, vars));
     }
   }, [template, vars]);
-
-  const handleAiRefine = async (prompt: string) => {
-    setAiLoading(true);
-    try {
-      const res = await fetch('/api/ai/refine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt, 
-          content: finalContent 
-        })
-      });
-      const data = await res.json();
-      if (data.refinedContent) {
-        setFinalContent(data.refinedContent);
-      } else {
-        alert(data.error || "Erro na IA");
-      }
-    } catch (e) {
-      alert("Falha na conexão com o servidor de IA");
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const handleExportPdf = async () => {
     setIsExporting(true);
@@ -313,14 +273,14 @@ function GenerateView({ store }: { store: any }) {
   };
 
   return (
-    <div className="flex flex-col h-full gap-8">
+    <div className="flex flex-col flex-1 gap-8 w-full max-w-full">
       {/* Header Controls */}
-      <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6 flex flex-wrap items-center justify-between gap-6 relative overflow-hidden group">
+      <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6 flex flex-wrap items-center justify-between gap-6 relative overflow-hidden group flex-shrink-0">
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
             <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Selecionar Modelo</label>
             <select 
-              className="bg-[#050505] border border-[#222222] rounded-lg text-sm p-3 w-72 focus:border-[#39FF14] transition-all outline-none"
+              className="bg-[#050505] border border-[#222222] rounded-lg text-sm p-3 w-full w-72 focus:border-[#39FF14] transition-all outline-none"
               value={selectedId}
               onChange={(e) => {
                 setSelectedId(e.target.value);
@@ -335,10 +295,10 @@ function GenerateView({ store }: { store: any }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 flex-1 gap-8 min-h-0">
+      <div className="grid grid-cols-2 flex-1 gap-8 min-h-0">
         {/* Variables Editor */}
-        <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8 flex flex-col min-h-0 overflow-y-auto relative">
-          <div className="flex items-center justify-between mb-8">
+        <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8 flex flex-col relative h-full overflow-y-auto">
+          <div className="flex items-center justify-between mb-8 flex-shrink-0">
             <h2 className="text-xl font-bold flex items-center gap-2"><Send className="h-5 w-5 text-[#39FF14]" /> Preenchimento Pro</h2>
             <div className="flex items-center gap-2">
                <span className="text-xs text-gray-500 font-mono italic">Vars Detectadas:</span>
@@ -346,7 +306,7 @@ function GenerateView({ store }: { store: any }) {
             </div>
           </div>
 
-          <div className="space-y-6 flex-1">
+          <div className="space-y-6 flex-1 overflow-y-auto pr-2">
             {detected.map((v: string) => (
               <div key={v} className="relative">
                 <label className="block text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2 px-1">
@@ -379,32 +339,6 @@ function GenerateView({ store }: { store: any }) {
 
           {/* AI Tools Bar e Acoes */}
           <div className="mt-8 pt-8 border-t border-[#1a1a1a]">
-             <h3 className="text-xs font-mono text-gray-500 uppercase mb-4 flex items-center gap-2">
-               <Sparkles className="h-3 w-3 text-purple-400" /> Assistente Llama PRO
-             </h3>
-             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-                <AiButton 
-                  label="Expandir" 
-                  loading={aiLoading} 
-                  onClick={() => handleAiRefine("Expanda este documento tornando-o mais detalhado e profissional.")} 
-                />
-                <AiButton 
-                  label="Resumir" 
-                  loading={aiLoading} 
-                  onClick={() => handleAiRefine("Resuma este documento mantendo apenas as partes essenciais.")} 
-                />
-                <AiButton 
-                  label="Formalizar" 
-                  loading={aiLoading} 
-                  onClick={() => handleAiRefine("Refine a linguagem para que soe extremamente formal e jurídica.")} 
-                />
-                <AiButton 
-                  label="Corrigir" 
-                  loading={aiLoading} 
-                  onClick={() => handleAiRefine("Corrija erros gramaticais e estilísticos mantendo o sentido.")} 
-                />
-             </div>
-
              <h3 className="text-xs font-mono text-gray-500 uppercase mb-3 flex items-center gap-2">
                <Printer className="h-3 w-3 text-[#39FF14]" /> Exportação e Ações
              </h3>
@@ -542,7 +476,7 @@ function GenerateView({ store }: { store: any }) {
         </div>
 
         {/* Live Preview Console */}
-        <div className="bg-white rounded-2xl flex flex-col overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] border border-gray-200 min-h-0 group relative">
+        <div className="bg-white rounded-2xl flex flex-col h-full min-h-0 overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] border border-gray-200 group relative">
           <div className="h-14 bg-[#0a0a0a] border-b border-[#1a1a1a] px-6 flex items-center justify-between flex-shrink-0">
              <div className="flex gap-1.5">
                <div className="w-2.5 h-2.5 rounded-full bg-red-500/30"></div>
@@ -662,7 +596,6 @@ function GenerateView({ store }: { store: any }) {
 
 function TemplatesView({ store }: { store: any }) {
   const [editing, setEditing] = useState<Template | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'editor' | 'preview'>('editor');
 
   const handleNew = () => {
     setEditing({
@@ -674,14 +607,14 @@ function TemplatesView({ store }: { store: any }) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    setActiveSubTab('editor');
+    
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-8">
+    <div className="flex flex-row h-full gap-8">
       <div className={cn(
-        "w-full lg:w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl flex flex-col shrink-0",
-        editing && "hidden lg:flex"
+        "w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl flex flex-col shrink-0",
+        
       )}>
         <div className="p-6 border-b border-[#1a1a1a]">
           <h2 className="text-sm font-bold uppercase tracking-widest text-[#718096] mb-4">Gerenciar Projetos</h2>
@@ -692,11 +625,11 @@ function TemplatesView({ store }: { store: any }) {
             <Plus className="h-3 w-3" /> Novo Template
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-2 max-h-[300px] lg:max-h-none">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 ">
           {store.templates.map((t: any) => (
             <div 
               key={t.id} 
-              onClick={() => { setEditing({...t}); setActiveSubTab('editor'); }}
+              onClick={() => { setEditing({...t});  }}
               className={cn(
                 "p-4 rounded-xl cursor-pointer transition-all border group",
                 editing?.id === t.id ? "bg-[#1a1a1a] border-[#39FF14]/30 shadow-lg shadow-[#39FF14]/5" : "bg-[#050505] border-[#1a1a1a] hover:border-[#222222]"
@@ -717,10 +650,10 @@ function TemplatesView({ store }: { store: any }) {
         </div>
       </div>
 
-      <div className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl flex flex-col p-4 lg:p-8 overflow-y-auto min-h-[500px]">
+      <div className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl flex flex-col p-8 overflow-y-auto min-h-[500px]">
         {editing ? (
           <div className="flex flex-col h-full">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 lg:mb-8 gap-4">
+            <div className="flex flex-row items-center justify-between mb-8 gap-4">
                <h2 className="text-xl font-bold">Configurando Modelo</h2>
                <div className="flex items-center gap-3">
                  <button 
@@ -728,16 +661,16 @@ function TemplatesView({ store }: { store: any }) {
                     store.templates.some((t: any) => t.id === editing.id) ? store.updateTemplate(editing.id, editing) : store.addTemplate(editing);
                     setEditing(null);
                   }}
-                  className="flex-1 sm:flex-none px-6 py-2.5 bg-[#39FF14] text-black font-bold rounded-xl hover:bg-[#7FFF00] transition-colors text-sm"
+                  className="flex-1 flex-none px-6 py-2.5 bg-[#39FF14] text-black font-bold rounded-xl hover:bg-[#7FFF00] transition-colors text-sm"
                  >
                    Salvar
                  </button>
-                 <button onClick={() => setEditing(null)} className="flex-1 sm:flex-none px-6 py-2.5 bg-[#1a1a1a] rounded-xl text-gray-400 text-sm hover:text-white border border-[#222222]">Voltar</button>
+                 <button onClick={() => setEditing(null)} className="flex-1 flex-none px-6 py-2.5 bg-[#1a1a1a] rounded-xl text-gray-400 text-sm hover:text-white border border-[#222222]">Voltar</button>
                </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6 mb-8">
-              <div className="sm:col-span-1">
+            <div className="grid grid-cols-1 grid-cols-3 gap-4 gap-6 mb-8">
+              <div className="col-span-1">
                 <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2 block">Nome</label>
                 <input 
                   className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-3 text-sm focus:border-[#39FF14] outline-none"
@@ -771,20 +704,8 @@ function TemplatesView({ store }: { store: any }) {
               </div>
             </div>
 
-            {/* Mobile SubTabs */}
-            <div className="flex lg:hidden bg-[#050505] p-1 rounded-xl mb-4 border border-[#1a1a1a] flex-shrink-0">
-               <button 
-                onClick={() => setActiveSubTab('editor')}
-                className={cn("flex-1 py-3 rounded-lg text-xs font-bold uppercase transition-colors text-center", activeSubTab === 'editor' ? "bg-[#1a1a1a] text-[#39FF14]" : "text-gray-500 hover:text-white")}
-               >Editor de Código</button>
-               <button 
-                onClick={() => setActiveSubTab('preview')}
-                className={cn("flex-1 py-3 rounded-lg text-xs font-bold uppercase transition-colors text-center", activeSubTab === 'preview' ? "bg-[#1a1a1a] text-[#39FF14]" : "text-gray-500 hover:text-white")}
-               >Visão Final</button>
-            </div>
-
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
-               <div className={cn("flex-col h-[400px] lg:h-auto overflow-hidden", activeSubTab === 'editor' ? "flex" : "hidden lg:flex")}>
+            <div className="flex-1 grid grid-cols-2 gap-8 min-h-0">
+               <div className="flex flex-col h-auto overflow-hidden">
                  <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2 block flex-shrink-0">Editor</label>
                  <textarea 
                   className="flex-1 w-full bg-[#050505] border border-[#1a1a1a] rounded-2xl p-6 font-mono text-[13px] text-gray-300 focus:border-[#39FF14] outline-none resize-none leading-relaxed shadow-inner"
@@ -792,9 +713,9 @@ function TemplatesView({ store }: { store: any }) {
                   onChange={e => setEditing({...editing, content: e.target.value})}
                  />
                </div>
-               <div className={cn("flex-col h-[400px] lg:h-auto overflow-hidden", activeSubTab === 'preview' ? "flex" : "hidden lg:flex")}>
+               <div className="flex flex-col h-auto overflow-hidden">
                  <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2 block flex-shrink-0">Preview</label>
-                 <div className="flex-1 w-full bg-white rounded-2xl p-6 lg:p-8 overflow-y-auto border border-gray-200">
+                 <div className="flex-1 w-full bg-white rounded-2xl p-8 overflow-y-auto border border-gray-200">
                     {editing.format === 'html' ? (
                        <div dangerouslySetInnerHTML={{ __html: editing.content }} className="prose prose-sm max-w-none text-black" />
                     ) : (
@@ -820,15 +741,15 @@ function HistoryView({ store }: { store: any }) {
   const [selected, setSelected] = useState<GeneratedDocument | null>(null);
 
   return (
-    <div className="flex flex-col lg:flex-row h-full gap-8">
+    <div className="flex flex-row h-full gap-8">
        <div className={cn(
-         "w-full lg:w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl flex flex-col overflow-hidden shrink-0",
-         selected && "hidden lg:flex"
+         "w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl flex flex-col overflow-hidden shrink-0",
+         
        )}>
           <div className="p-6 border-b border-[#1a1a1a]">
              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Documentos Gerados</h2>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 max-h-[400px] lg:max-h-none">
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 ">
              {store.documents.map((d: any) => (
                 <div 
                   key={d.id}
@@ -851,27 +772,27 @@ function HistoryView({ store }: { store: any }) {
        <div className="flex-1 bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
          {selected ? (
            <div className="flex flex-col h-full">
-              <div className="bg-[#0a0a0a] p-4 lg:p-6 border-b border-[#1a1a1a] flex items-center justify-between">
+              <div className="bg-[#0a0a0a] p-6 border-b border-[#1a1a1a] flex items-center justify-between">
                  <div className="flex items-center gap-4">
-                    <button onClick={() => setSelected(null)} className="lg:hidden p-2 text-gray-400 hover:text-white">
+                    <button onClick={() => setSelected(null)} className="hidden p-2 text-gray-400 hover:text-white">
                       <ChevronRight className="h-5 w-5 rotate-180" />
                     </button>
                     <div>
-                       <h2 className="text-white font-bold text-sm lg:text-base truncate max-w-[150px] sm:max-w-none">{selected.templateName}</h2>
-                       <p className="text-[8px] lg:text-[10px] text-gray-500 font-mono uppercase mt-1 tracking-widest">ID: {selected.id.slice(0,8)}...</p>
+                       <h2 className="text-white font-bold text-sm text-base truncate max-w-[150px] max-w-none">{selected.templateName}</h2>
+                       <p className="text-[8px] text-[10px] text-gray-500 font-mono uppercase mt-1 tracking-widest">ID: {selected.id.slice(0,8)}...</p>
                     </div>
                  </div>
                  <div className="flex gap-2">
-                    <button onClick={() => window.print()} className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-[#39FF14] transition-colors"><Printer className="h-4 w-4 lg:h-5 lg:w-5" /></button>
-                    <button onClick={() => { store.deleteDocument(selected.id); setSelected(null); }} className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4 lg:h-5 lg:w-5" /></button>
+                    <button onClick={() => window.print()} className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-[#39FF14] transition-colors"><Printer className="h-4 w-4 h-5 w-5" /></button>
+                    <button onClick={() => { store.deleteDocument(selected.id); setSelected(null); }} className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4 h-5 w-5" /></button>
                  </div>
               </div>
-              <div className="flex-1 p-6 lg:p-16 overflow-y-auto text-black select-text">
+              <div className="flex-1 p-6 p-16 overflow-y-auto text-black select-text">
                 <div className="max-w-2xl mx-auto">
                     {selected.format === 'html' ? (
-                       <div dangerouslySetInnerHTML={{ __html: selected.finalContent }} className="prose prose-sm lg:prose-base max-w-none" />
+                       <div dangerouslySetInnerHTML={{ __html: selected.finalContent }} className="prose prose-sm prose-base max-w-none" />
                     ) : (
-                      <pre className="font-serif text-sm lg:text-base leading-relaxed lg:leading-8 whitespace-pre-wrap">{selected.finalContent}</pre>
+                      <pre className="font-serif text-sm text-base leading-relaxed leading-8 whitespace-pre-wrap">{selected.finalContent}</pre>
                     )}
                 </div>
               </div>
@@ -901,7 +822,7 @@ function SettingsView({ store }: { store: any }) {
         <p className="text-gray-500 font-mono text-sm uppercase tracking-widest">Security & API Infrastructure</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-2 gap-8">
         <div className="space-y-8">
           <section className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -934,16 +855,16 @@ function SettingsView({ store }: { store: any }) {
 
           <section className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-purple-400" /> Inteligência Llama Local
+              <ShieldCheck className="h-4 w-4 text-[#39FF14]" /> Operação 100% Offline
             </h3>
             <div className="space-y-4">
-              <div className="p-4 bg-purple-400/5 border border-purple-400/20 rounded-xl">
-                 <p className="text-[10px] text-purple-300 leading-relaxed uppercase tracking-tighter font-bold mb-2">
-                   CONECTADO AO OLLAMA (127.0.0.1:11434)
+              <div className="p-4 bg-[#39FF14]/5 border border-[#39FF14]/20 rounded-xl">
+                 <p className="text-[10px] text-[#39FF14] leading-relaxed uppercase tracking-tighter font-bold mb-2">
+                   PRIVACIDADE GARANTIDA
                  </p>
-                 <p className="text-[10px] text-purple-200/50 leading-relaxed uppercase tracking-tighter">
-                   A API do Gemini foi substituída pela execução local do Llama 3 via Ollama. 
-                   Certifique-se de que o Ollama esteja rodando na sua máquina na porta padrão.
+                 <p className="text-[10px] text-gray-500 leading-relaxed uppercase tracking-tighter">
+                   Nenhum dado é enviado para APIs externas. Este sistema roda em ambiente isolado 
+                   usando apenas os recursos do seu computador (JSON/Local Storage). Independente e Seguro.
                  </p>
               </div>
             </div>
@@ -1043,19 +964,5 @@ function StatCard({ icon, label, value, color }: { icon: any, label: string, val
   );
 }
 
-function AiButton({ label, loading, onClick }: { label: string, loading: boolean, onClick: () => void }) {
-  return (
-    <button 
-      disabled={loading}
-      onClick={onClick}
-      className={cn(
-        "flex-1 px-3 py-2 border rounded-lg text-[10px] font-bold uppercase transition-all tracking-wider",
-        loading 
-          ? "bg-gray-800 border-gray-700 text-gray-500" 
-          : "bg-purple-400/10 border-purple-400/20 text-purple-300 hover:bg-purple-400/20 hover:border-purple-400/40"
-      )}
-    >
-      {loading ? "Processando..." : label}
-    </button>
-  );
-}
+
+

@@ -6,7 +6,6 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import os from 'os';
-// Removed GoogleGenerativeAI
 
 dotenv.config();
 
@@ -73,34 +72,6 @@ async function startServer() {
       const key = req.query.key as string;
       const db = await getDB();
       res.json({ value: db.store[key] || null });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // API: AI Refine
-  app.post('/api/ai/refine', async (req, res) => {
-    try {
-      const { prompt, content } = req.body;
-      const fullPrompt = `${prompt}\n\nAplique isso ao seguinte texto (retorne apenas o texto modificado):\n\n${content}`;
-      
-      // Integracao com Ollama Llama Localmente
-      const response = await fetch('http://127.0.0.1:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llama3', // Modelo padrao do ollama, pode ser alterado
-          prompt: fullPrompt,
-          stream: false
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Ollama error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      res.json({ refinedContent: data.response });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
