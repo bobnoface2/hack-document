@@ -163,15 +163,26 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    // Escopo do pkg (empacotamento executavel) - a build estara no mesmo __dirname do bundle js (dentro do zip compilado)
+    const distPath = __dirname;
     app.use(express.static(distPath));
     app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Server running at http://localhost:${PORT}`);
+    
+    // Automatically open browser if we are running as a compiled standalone app
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const open = (await import('open')).default;
+        await open(`http://localhost:${PORT}`);
+      } catch (err) {
+        console.log("-> Acesse http://localhost:3000 em seu navegador.");
+      }
+    }
   });
 }
 

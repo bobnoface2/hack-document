@@ -4,7 +4,8 @@ import {
   Code, FileText, History, Settings, Printer, Download, Save, Plus, 
   Trash2, Mail, TerminalSquare, Menu, X, LayoutDashboard, Sparkles, 
   ChevronRight, ArrowRight, CheckCircle2, AlertCircle, FileDown, 
-  Clock, Send, ShieldCheck
+  Clock, Send, ShieldCheck, Bold, Italic, Underline, AlignLeft,
+  AlignCenter, AlignRight, AlignJustify
 } from 'lucide-react';
 import { generateId, extractVariables, replaceVariables, cn } from './lib/utils';
 import { Template, GeneratedDocument } from './types';
@@ -483,19 +484,28 @@ function GenerateView({ store }: { store: any }) {
                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/30"></div>
                <div className="w-2.5 h-2.5 rounded-full bg-green-500/40"></div>
              </div>
+             <div className="flex gap-1 bg-[#1a1a1a] py-1 px-2 rounded-lg border border-[#333]">
+               <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('bold')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Negrito"><Bold className="w-4 h-4" /></button>
+               <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('italic')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Itálico"><Italic className="w-4 h-4" /></button>
+               <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('underline')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Sublinhado"><Underline className="w-4 h-4" /></button>
+               <div className="w-px h-4 bg-[#333] self-center mx-1"></div>
+               <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('justifyLeft')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Alinhar à Esquerda"><AlignLeft className="w-4 h-4" /></button>
+               <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('justifyCenter')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Centralizar"><AlignCenter className="w-4 h-4" /></button>
+               <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('justifyRight')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Alinhar à Direita"><AlignRight className="w-4 h-4" /></button>
+             </div>
              <div className="text-[10px] font-mono text-gray-500 flex items-center gap-2">
                 <Printer className="h-3 w-3" /> PRINT_PREVIEW_A4
              </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-12 bg-white text-black min-h-0 select-text selection:bg-blue-100">
-             {template?.format === 'html' ? (
-                <div dangerouslySetInnerHTML={{ __html: finalContent }} className="prose prose-sm max-w-none" />
-             ) : (
-                <pre className="font-serif text-sm leading-8 whitespace-pre-wrap text-justify antialiased">
-                  {finalContent}
-                </pre>
-             )}
+             <div 
+               className={cn("outline-none max-w-none transition-all h-full", template?.format === 'html' ? "prose prose-sm" : "font-serif text-sm leading-8 whitespace-pre-wrap antialiased")}
+               contentEditable 
+               suppressContentEditableWarning
+               onBlur={(e) => setFinalContent(e.currentTarget.innerHTML)}
+               dangerouslySetInnerHTML={{ __html: finalContent }}
+             />
           </div>
 
           {/* Floating UI Hints */}
@@ -557,13 +567,13 @@ function GenerateView({ store }: { store: any }) {
                     if (template?.format === 'html') {
                        const numSigs = signatures.length;
                        const sigNodes = signatures.map(sig => `
-                         <div class="sig-box" style="text-align: center; width: ${Math.floor(100/numSigs)}%; min-width: 200px; padding: 20px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                            <hr class="sig-line" style="border: 0; border-top: 1px solid #000; width: 250px; max-width: 100%; margin: 0 auto 10px auto;" />
-                            <p style="font-family: sans-serif; font-size: 14px; margin: 0; font-weight: bold; text-align: center; width: 100%;">${sig.name || 'Assinatura'}</p>
-                            ${sig.role ? `<p style="font-family: sans-serif; font-size: 12px; margin: 4px 0 0 0; color: #555; text-align: center; width: 100%;">${sig.role}</p>` : ''}
+                         <div style="flex: 1; min-width: 250px; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin-bottom: 20px;">
+                            <div style="width: 100%; max-width: 300px; border-bottom: 1px solid #000; margin-bottom: 8px;"></div>
+                            <div style="font-family: sans-serif; font-size: 14px; font-weight: bold; text-align: center; width: 100%; margin: 0;">${sig.name || 'Assinatura'}</div>
+                            ${sig.role ? `<div style="font-family: sans-serif; font-size: 12px; color: #555; text-align: center; width: 100%; margin: 4px 0 0 0;">${sig.role}</div>` : ''}
                          </div>
                        `).join('');
-                       sigsText = `\n<div class="sig-container" style="margin-top: 80px; display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; border: 0 !important; outline: none !important;">${sigNodes}</div>\n`;
+                       sigsText = `\n<div style="margin-top: 60px; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; width: 100%;">${sigNodes}</div>\n<p><br></p>\n`;
                     } else {
                        const centerText = (text: string, width: number) => {
                           if (text.length >= width) return text;
