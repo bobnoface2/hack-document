@@ -6,6 +6,7 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import os from 'os';
+import { defaultTemplates } from './src/defaultTemplates';
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ const PORT = 3000;
 
 // JSON DB for simplicity and compatibility (avoiding SQLite glibc issues)
 const DB_FILE = path.join(process.cwd(), "HackDocumentPRO_Data.json");
+const TEMPLATES_DIR = path.join(process.cwd(), "templates");
 
 async function initDB() {
   try {
@@ -30,6 +32,22 @@ async function initDB() {
   }
 }
 
+async function initTemplates() {
+  try {
+    await fs.mkdir(TEMPLATES_DIR, { recursive: true });
+    const files = await fs.readdir(TEMPLATES_DIR);
+    if (files.length === 0) {
+      console.log("Populating physical templates directory with default templates...");
+      for (const template of defaultTemplates) {
+        const templatePath = path.join(TEMPLATES_DIR, `${template.id}.json`);
+        await fs.writeFile(templatePath, JSON.stringify(template, null, 2), 'utf-8');
+      }
+    }
+  } catch (err) {
+    console.error("Failed to initialize templates directory", err);
+  }
+}
+
 async function getDB() {
   const data = await fs.readFile(DB_FILE, 'utf-8');
   return JSON.parse(data);
@@ -40,6 +58,7 @@ async function saveDB(data: any) {
 }
 
 initDB();
+initTemplates();
 
 async function startServer() {
   const app = express();
@@ -72,6 +91,69 @@ async function startServer() {
       const key = req.query.key as string;
       const db = await getDB();
       res.json({ value: db.store[key] || null });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API: Physical Templates Directory
+  app.get('/api/templates', async (req, res) => {
+    try {
+      await fs.mkdir(TEMPLATES_DIR, { recursive: true });
+      const files = await fs.readdir(TEMPLATES_DIR);
+      const templatesList = [];
+      for (const filename of files) {
+        if (filename.endsWith('.json')) {
+          try {
+            const filePath = path.join(TEMPLATES_DIR, filename);
+            const raw = await fs.readFile(filePath, 'utf-8');
+            templatesList.push(JSON.parse(raw));
+          } catch (err) {
+            console.error(`Error reading template file ${filename}:`, err);
+          }
+        }
+      }
+      // Sort templates by updatedAt (newest first). Fallback to createdAt.
+      templatesList.sort((a, b) => {
+        const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        return bTime - aTime;
+      });
+      res.json(templatesList);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/templates', async (req, res) => {
+    try {
+      const template = req.body;
+      if (!template.id) {
+        return res.status(400).json({ error: "O template precisa de um ID válido." });
+      }
+      await fs.mkdir(TEMPLATES_DIR, { recursive: true });
+      const templatePath = path.join(TEMPLATES_DIR, `${template.id}.json`);
+      await fs.writeFile(templatePath, JSON.stringify(template, null, 2), 'utf-8');
+      res.json({ success: true, template });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/templates/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const templatePath = path.join(TEMPLATES_DIR, `${id}.json`);
+      try {
+        await fs.unlink(templatePath);
+        res.json({ success: true });
+      } catch (err: any) {
+        if (err.code === 'ENOENT') {
+          res.status(404).json({ error: "Template não encontrado." });
+        } else {
+          throw err;
+        }
+      }
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
