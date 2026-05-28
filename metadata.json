@@ -1,5 +1,6 @@
 {
   "name": "Hack Document",
   "description": "Módulo robusto para criação e gerenciamento de documentos, notas fiscais, contratos e recibos com variáveis automáticas (Web e Python).",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

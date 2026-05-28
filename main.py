@@ -66,6 +66,21 @@ def add_sent_log(to_email, subject, status):
 app = Flask(__name__, static_folder=None)
 CORS(app)
 
+# Tenta importar o LLM local se existir na pasta models
+llama_model = None
+try:
+    import glob
+    from llama_cpp import Llama
+    print("Tentando carregar modelo Llama local...")
+    possible_models = glob.glob(os.path.join(get_base_path(), "models", "*.gguf"))
+    if possible_models:
+        llama_model = Llama(model_path=possible_models[0], n_ctx=8192, verbose=False)
+        print("Modelo Llama carregado com sucesso:", possible_models[0])
+    else:
+        print("Nenhum modelo .gguf encontrado na pasta models/")
+except Exception as e:
+    print("Aviso: llama_cpp_python não instalado ou erro ao carregar:", str(e))
+
 @app.route('/api/store', methods=['GET', 'POST'])
 def api_store():
     if request.method == 'POST':
@@ -74,20 +89,117 @@ def api_store():
         return jsonify({"success": True})
     return jsonify({"value": db_get(request.args.get('key', ''))})
 
-@app.route('/api/ai/refine', methods=['POST'])
-def ai_refine():
+def generate_local_ai(prompt, system_instruction):
+    if not llama_model:
+        raise Exception("Modelo Llama local não está carregado. Verifique os arquivos na pasta models.")
+    
+    # Formato básico para a maioria dos LLMs instrucionais (chatml misturado)
+    full_prompt = f"System: {system_instruction}\n\nUser: {prompt}\n\nAssistant:"
+    
+    result = llama_model(
+        full_prompt,
+        max_tokens=2048,
+        stop=["User:", "System:"],
+        echo=False
+    )
+    return result['choices'][0]['text']
+
+@app.route('/api/ai/spellcheck', methods=['POST'])
+def ai_spellcheck():
     data = request.json
     try:
-        full_prompt = f"{data.get('prompt')}\n\nAplique isso ao texto:\n\n{data.get('content')}"
-        req = urllib.request.Request(
-            'http://127.0.0.1:11434/api/generate',
-            data=json.dumps({"model": "llama3", "prompt": full_prompt, "stream": False}).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST'
-        )
-        with urllib.request.urlopen(req) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            return jsonify({"refinedContent": result.get("response", "")})
+        content = data.get('content', '')
+        prompt = f"Corrija os erros ortográficos do texto mantendo o HTML.\n\nConteúdo:\n{content}"
+        output = generate_local_ai(prompt, "Você é um revisor ortográfico. Retorne apenas o código HTML final e mais nada.")
+        return jsonify({"success": True, "result": output.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/spacing', methods=['POST'])
+def ai_spacing():
+    data = request.json
+    try:
+        content = data.get('content', '')
+        prompt = f"Ajuste e embeleze os espaçamentos com Tailwind CSS deste formato mantendo as variáveis.\n\nHTML:\n{content}"
+        output = generate_local_ai(prompt, "Você é um profissional de Ui/UX. Retorne apenas código HTML sem explicacão.")
+        return jsonify({"success": True, "result": output.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/templatize', methods=['POST'])
+def ai_templatize():
+    data = request.json
+    try:
+        content = data.get('content', '')
+        prompt = f"Encontre e substitua dados reais (CPFs, nomes explícitos, datas) por variáveis como {{{{nome_cliente}}}}. \nREGRA MÁXIMA: PRESARVAR 100% dos espaçamentos, estrutura HTML, e recuos originais! Faça apenas o replace das palavras.\n\n{content}"
+        output = generate_local_ai(prompt, "Você é como um Find & Replace avançado. Retorne o exato conteúdo sem mexer em formatações e recuos.")
+        return jsonify({"success": True, "result": output.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/generate', methods=['POST'])
+def ai_generate():
+    data = request.json
+    try:
+        prompt = data.get('prompt', '')
+        sys_prompt = "Você gera documentos HTML requintados usando classes Tailwind. Não escreva markdown como ```html."
+        res_text = generate_local_ai(prompt, sys_prompt)
+        
+        # O React frontend espera name e content no formato JSON para essa rota específica
+        return jsonify({"success": True, "name": "Documento Gerado", "content": res_text.strip()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/reproduce', methods=['POST'])
+def ai_reproduce():
+    data = request.json
+    try:
+        base64_data = data.get('base64Data', '')
+        mime_type = data.get('mimeType', '')
+        
+        import base64
+        import io
+        import re
+        import json
+        
+        file_bytes = base64.b64decode(base64_data)
+        extracted_text = ""
+        
+        if 'pdf' in mime_type:
+            try:
+                import PyPDF2
+                reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+                for page in reader.pages:
+                    text = page.extract_text()
+                    if text: extracted_text += text + "\n"
+            except ImportError:
+                return jsonify({"error": "Para ler PDF offline no seu PC, é necessário instalar no terminal: pip install PyPDF2"}), 500
+        elif 'image' in mime_type:
+            try:
+                import pytesseract
+                from PIL import Image
+                image = Image.open(io.BytesIO(file_bytes))
+                extracted_text = pytesseract.image_to_string(image, lang='por')
+            except ImportError:
+                return jsonify({"error": "Para ler imagens offline, é necessário: pip install pytesseract Pillow"}), 500
+        
+        if not extracted_text.strip():
+            return jsonify({"error": "Não foi possível extrair o texto do arquivo."}), 400
+
+        prompt = f"Analise o texto extraído do documento OCR fornecido. Transcreva e formate-o recriando o documento em um HTML bonito usando classes do Tailwind CSS visando impressão.\nIdentifique partes dinâmicas e substitua por formato de duas chaves {{{{nome_variavel}}}}.\nObrigatório: Retorne APENAS um JSON com {{ \"name\": \"Titulo Limpo\", \"content\": \"<HTML...\" }}. Sem tags markdown.\n\nConteúdo Extraído OCR:\n{extracted_text}"
+        sys_prompt = "Você é um especialista em UI/UX para documentos HTML. Você só responde em formato JSON."
+        
+        res_text = generate_local_ai(prompt, sys_prompt)
+        
+        # Extrair JSON caso o LLM retorne texto fora
+        json_match = re.search(r'\{.*\}', res_text, re.DOTALL)
+        if json_match:
+            try:
+                parsed = json.loads(json_match.group(0))
+                return jsonify({"success": True, "name": parsed.get("name", "Documento Reproduzido"), "content": parsed.get("content", "")})
+            except: pass
+            
+        return jsonify({"success": True, "name": "Documento Reproduzido", "content": res_text.strip()})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

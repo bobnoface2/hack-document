@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from './store';
 import { 
   Code, FileText, History, Settings, Printer, Download, Save, Plus, 
   Trash2, Mail, TerminalSquare, Menu, X, LayoutDashboard, Sparkles, 
   ChevronRight, ArrowRight, CheckCircle2, AlertCircle, FileDown, 
   Clock, Send, ShieldCheck, Bold, Italic, Underline, AlignLeft,
-  AlignCenter, AlignRight, AlignJustify, ExternalLink, Image, Camera
+  AlignCenter, AlignRight, AlignJustify, ExternalLink, Image, Camera, UploadCloud
 } from 'lucide-react';
 import { generateId, extractVariables, replaceVariables, cn } from './lib/utils';
 import { Template, GeneratedDocument } from './types';
@@ -200,6 +200,138 @@ function GenerateView({ store }: { store: any }) {
   const template = store.templates.find((t: any) => t.id === selectedId);
   const detected = template ? extractVariables(template.content) : [];
 
+  const [leftTab, setLeftTab] = useState<'fill' | 'ai'>('fill');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [activeActions, setActiveActions] = useState<Record<string, boolean>>({});
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      alert("O arquivo é muito grande. O limite é de 15MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      const base64Data = (reader.result as string).split(',')[1];
+      const mimeType = file.type;
+
+      setActiveActions(prev => ({ ...prev, 'isReproducing': true }));
+      try {
+        const response = await fetch('/api/ai/reproduce', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64Data, mimeType })
+        });
+        const data = await response.json();
+        if (data.success && data.content) {
+          const newId = 'ai-reproduced-' + Math.random().toString(36).substring(2, 9);
+          const newTmpl = {
+            id: newId,
+            name: data.name || 'Documento Reproduzido',
+            type: 'documento',
+            format: 'html',
+            content: data.content,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await store.addTemplate(newTmpl);
+          setSelectedId(newId);
+          setVars({});
+          setLeftTab('fill');
+          alert(`Documento reproduzido com sucesso!`);
+        } else {
+          alert("Erro ao reproduzir: " + (data.error || "Erro desconhecido"));
+        }
+      } catch (err: any) {
+        alert("Erro na conexão: " + err.message);
+      } finally {
+        setActiveActions(prev => ({ ...prev, 'isReproducing': false }));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+  };
+
+  const handleAiRequest = async (endpoint: string, actionKey: string) => {
+    const currentHTML = document.getElementById('editable-document-body')?.innerHTML || finalContent;
+    if (!currentHTML || currentHTML.trim() === '') {
+      alert("Por favor, digite ou selecione algum documento primeiro.");
+      return;
+    }
+    setActiveActions(prev => ({ ...prev, [actionKey]: true }));
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: currentHTML })
+      });
+      const data = await response.json();
+      if (data.success && data.result) {
+        setFinalContent(data.result);
+        const editor = document.getElementById('editable-document-body');
+        if (editor) {
+          editor.innerHTML = data.result;
+        }
+        if (template) {
+          store.updateTemplate(template.id, { content: data.result });
+        }
+        alert("Operação concluída com sucesso!");
+      } else {
+        alert("Erro na operação: " + (data.error || "Erro desconhecido"));
+      }
+    } catch (e: any) {
+      alert("Erro ao conectar com a IA: " + e.message);
+    } finally {
+      setActiveActions(prev => ({ ...prev, [actionKey]: false }));
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) {
+      alert("Por favor, digite o que você quer que o assistente crie (ex: 'Contrato de Parceria Comercial').");
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt })
+      });
+      const data = await response.json();
+      if (data.success) {
+        const newId = 'ai-' + Math.random().toString(36).substring(2, 9);
+        const newTmpl = {
+          id: newId,
+          name: data.name || 'Gerado por IA',
+          type: 'documento',
+          format: 'html',
+          content: data.content,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await store.addTemplate(newTmpl);
+        setSelectedId(newId);
+        setVars({});
+        setAiPrompt('');
+        alert(`Modelo "${data.name}" criado com IA e selecionado com sucesso! Preencha as variáveis ao lado.`);
+        setLeftTab('fill');
+      } else {
+        alert("Erro ao gerar: " + (data.error || "Erro desconhecido"));
+      }
+    } catch (e: any) {
+      alert("Erro ao conectar com o gerador de IA: " + e.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   useEffect(() => {
     if (template) {
       setFinalContent(replaceVariables(template.content, vars));
@@ -323,44 +455,195 @@ function GenerateView({ store }: { store: any }) {
       <div className="grid grid-cols-2 flex-1 gap-8 min-h-0">
         {/* Variables Editor */}
         <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8 flex flex-col relative h-full overflow-y-auto">
-          <div className="flex items-center justify-between mb-8 flex-shrink-0">
-            <h2 className="text-xl font-bold flex items-center gap-2"><Send className="h-5 w-5 text-[#39FF14]" /> Preenchimento Pro</h2>
-            <div className="flex items-center gap-2">
-               <span className="text-xs text-gray-500 font-mono italic">Vars Detectadas:</span>
-               <span className="px-2 py-0.5 bg-[#1a1a1a] rounded text-[10px] font-bold text-[#39FF14]">{detected.length}</span>
-            </div>
+          {/* Segmented Tab Selector */}
+          <div className="flex bg-[#050505] p-1 rounded-xl border border-[#1a1a1a] mb-6 flex-shrink-0">
+            <button
+              onClick={() => setLeftTab('fill')}
+              className={cn(
+                "flex-1 py-2.5 rounded-lg font-bold text-xs transition flex items-center justify-center gap-2",
+                leftTab === 'fill' 
+                  ? "bg-[#39FF14] text-black shadow-lg" 
+                  : "text-gray-400 hover:text-white"
+              )}
+            >
+              <Send className="h-4 w-4" /> Preenchimento Manual
+            </button>
+            <button
+              onClick={() => setLeftTab('ai')}
+              className={cn(
+                "flex-1 py-2.5 rounded-lg font-bold text-xs transition flex items-center justify-center gap-2",
+                leftTab === 'ai' 
+                  ? "bg-[#39FF14] text-black shadow-lg" 
+                  : "text-gray-400 hover:text-white"
+              )}
+            >
+              <Sparkles className="h-4 w-4" /> Assistente de IA
+            </button>
           </div>
 
-          <div className="space-y-6 flex-1 overflow-y-auto pr-2">
-            {detected.map((v: string) => (
-              <div key={v} className="relative">
-                <label className="block text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2 px-1">
-                  {v.replace(/_/g, ' ')}
-                </label>
-                {v.toLowerCase().includes('desc') || v.toLowerCase().includes('text') ? (
-                   <textarea
-                    className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] transition-all outline-none min-h-[100px]"
-                    placeholder={`Entre com ${v}...`}
-                    value={vars[v] || ''}
-                    onChange={(e) => setVars(prev => ({ ...prev, [v]: e.target.value }))}
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] transition-all outline-none"
-                    placeholder={`Entre com ${v}...`}
-                    value={vars[v] || ''}
-                    onChange={(e) => setVars(prev => ({ ...prev, [v]: e.target.value }))}
-                  />
+          {leftTab === 'fill' ? (
+            <>
+              <div className="flex items-center justify-between mb-6 flex-shrink-0">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                  <Send className="h-4 w-4 text-[#39FF14]" /> Campos de Variáveis
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-mono italic">Vars Detectadas:</span>
+                  <span className="px-2 py-0.5 bg-[#1a1a1a] rounded text-[10px] font-bold text-[#39FF14]">{detected.length}</span>
+                </div>
+              </div>
+
+              <div className="space-y-6 flex-1 overflow-y-auto pr-2">
+                {detected.map((v: string) => (
+                  <div key={v} className="relative">
+                    <label className="block text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2 px-1">
+                      {v.replace(/_/g, ' ')}
+                    </label>
+                    {v.toLowerCase().includes('desc') || v.toLowerCase().includes('text') ? (
+                       <textarea
+                        className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] transition-all outline-none min-h-[100px]"
+                        placeholder={`Entre com ${v}...`}
+                        value={vars[v] || ''}
+                        onChange={(e) => setVars(prev => ({ ...prev, [v]: e.target.value }))}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] transition-all outline-none"
+                        placeholder={`Entre com ${v}...`}
+                        value={vars[v] || ''}
+                        onChange={(e) => setVars(prev => ({ ...prev, [v]: e.target.value }))}
+                      />
+                    )}
+                  </div>
+                ))}
+                {detected.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-gray-600 italic">
+                    Nenhuma variável detectada no template selecionado.
+                  </div>
                 )}
               </div>
-            ))}
-            {detected.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-gray-600 italic">
-                Nenhuma variável detectada no template selecionado.
+            </>
+          ) : (
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+              {/* Action 1: Spellcheck */}
+              <div className="p-4 rounded-xl border border-[#1a1a1a] bg-[#050505] space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-sky-400">
+                  <Sparkles className="h-4 w-4" /> 1. Correção Ortográfica
+                </div>
+                <p className="text-xs text-gray-400">
+                  Faz uma correção ortográfica e gramatical avançada em todo o documento atual.
+                </p>
+                <button
+                  onClick={() => handleAiRequest('/api/ai/spellcheck', 'isSpellchecking')}
+                  disabled={activeActions['isSpellchecking']}
+                  className="w-full py-2.5 bg-sky-500 hover:bg-sky-450 text-black font-bold rounded-lg disabled:bg-gray-800 disabled:text-gray-400 transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {activeActions['isSpellchecking'] ? (
+                    <><Clock className="animate-spin h-3.5 w-3.5" /> Corrigindo...</>
+                  ) : (
+                    <><Sparkles className="h-3.5 w-3.5" /> Aplicar Correção Ortográfica</>
+                  )}
+                </button>
               </div>
-            )}
-          </div>
+
+              {/* Action 2: Spacing Correct */}
+              <div className="p-4 rounded-xl border border-[#1a1a1a] bg-[#050505] space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-teal-400">
+                  <AlignLeft className="h-4 w-4" /> 2. Corrigir Espaçamentos
+                </div>
+                <p className="text-xs text-gray-400">
+                  Arruma quebras de linha e estrutura visual de espaçamentos para um formato mais elegante e organizado.
+                </p>
+                <button
+                  onClick={() => handleAiRequest('/api/ai/spacing', 'isSpacing')}
+                  disabled={activeActions['isSpacing']}
+                  className="w-full py-2.5 bg-teal-500 hover:bg-teal-450 text-black font-bold rounded-lg disabled:bg-gray-800 disabled:text-gray-400 transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {activeActions['isSpacing'] ? (
+                    <><Clock className="animate-spin h-3.5 w-3.5" /> Organizando...</>
+                  ) : (
+                    <><AlignLeft className="h-3.5 w-3.5" /> Corrigir Espaçamentos</>
+                  )}
+                </button>
+              </div>
+
+              {/* Action 3: Auto-Templatize */}
+              <div className="p-4 rounded-xl border border-[#1a1a1a] bg-[#050505] space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-orange-400">
+                  <Code className="h-4 w-4" /> 3. Transformar em Vars Dínâmicas
+                </div>
+                <p className="text-xs text-gray-400">
+                  A IA lerá os dados atuais do documento (como nomes, valores e datas) e os substituirá por marcações dinâmicas (ex.: {'{{nome}}'}).
+                </p>
+                <button
+                  onClick={() => handleAiRequest('/api/ai/templatize', 'isTemplatizing')}
+                  disabled={activeActions['isTemplatizing']}
+                  className="w-full py-2.5 bg-orange-400 hover:bg-orange-350 text-black font-bold rounded-lg disabled:bg-gray-800 disabled:text-gray-400 transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {activeActions['isTemplatizing'] ? (
+                    <><Clock className="animate-spin h-3.5 w-3.5" /> Extraindo...</>
+                  ) : (
+                    <><Code className="h-3.5 w-3.5" /> Criar Variáveis {'{{ ... }}'}</>
+                  )}
+                </button>
+              </div>
+
+              {/* Action 4: Create HTML Document from prompt */}
+              <div className="p-4 rounded-xl border border-[#1a1a1a] bg-[#050505] space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#39FF14]">
+                  <Sparkles className="h-4 w-4" /> 4. Gerador de Email/Documento HTML
+                </div>
+                <p className="text-xs text-gray-400">
+                  Crie um template decorado HTML usando instruções (ex: "Criar email estiloso para festa da igreja").
+                </p>
+                <textarea
+                  placeholder="Exemplo: Crie email verde claro para festa na Igreja com as variáveis..."
+                  className="w-full bg-black border border-[#1a1a1a] rounded-lg p-3 text-xs text-white focus:border-[#39FF14] outline-none min-h-[85px] resize-none"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  disabled={isGenerating}
+                />
+                <button
+                  onClick={handleAiGenerate}
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  className="w-full py-2.5 bg-[#39FF14] text-black font-bold rounded-lg hover:bg-[#7FFF00] disabled:bg-gray-800 disabled:text-gray-400 transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Clock className="animate-spin h-3.5 w-3.5" /> Gerando Documento HTML...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5" /> Criar Documento
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Action 5: Reproduce from File */}
+              <div className="p-4 rounded-xl border border-[#1a1a1a] bg-[#050505] space-y-4">
+                <input type="file" accept="image/*,application/pdf" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                <div className="flex items-center gap-2 text-sm font-bold text-fuchsia-400">
+                  <UploadCloud className="h-4 w-4" /> 5. Reproduzir de Arquivo (Imagem/PDF)
+                </div>
+                <p className="text-xs text-gray-400">
+                  Envie uma foto, JPG, PNG ou PDF do documento. A IA transcreverá as informações e retornará o documento fiel já como HTML editável e dinâmico.
+                </p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={activeActions['isReproducing']}
+                  className="w-full py-2.5 bg-fuchsia-500 hover:bg-fuchsia-450 text-black font-bold rounded-lg disabled:bg-gray-800 disabled:text-gray-400 transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {activeActions['isReproducing'] ? (
+                    <><Clock className="animate-spin h-3.5 w-3.5" /> Lendo Arquivo...</>
+                  ) : (
+                    <><UploadCloud className="h-3.5 w-3.5" /> Fazer Upload (Foto/PDF)</>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* AI Tools Bar e Acoes */}
           <div className="mt-8 pt-8 border-t border-[#1a1a1a]">
