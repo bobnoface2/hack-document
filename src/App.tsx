@@ -5,7 +5,7 @@ import {
   Trash2, Mail, TerminalSquare, Menu, X, LayoutDashboard, Sparkles, 
   ChevronRight, ArrowRight, CheckCircle2, AlertCircle, FileDown, 
   Clock, Send, ShieldCheck, Bold, Italic, Underline, AlignLeft,
-  AlignCenter, AlignRight, AlignJustify
+  AlignCenter, AlignRight, AlignJustify, ExternalLink, Image, Camera
 } from 'lucide-react';
 import { generateId, extractVariables, replaceVariables, cn } from './lib/utils';
 import { Template, GeneratedDocument } from './types';
@@ -15,7 +15,6 @@ type Tab = 'dashboard' | 'generate' | 'templates'  | 'history' | 'settings';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const store = useAppStore();
 
   useEffect(() => {
@@ -24,89 +23,64 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-gray-100 font-sans selection:bg-[#39FF14] selection:text-black">
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Sidebar */}
-        <motion.div 
-          initial={false}
-          animate={{ 
-            width: isSidebarOpen ? 260 : 80
-          }}
-          transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-          className={cn(
-            "bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col h-full shadow-2xl relative overflow-hidden shrink-0"
-          )}
-        >
-          {/* Logo Section */}
-          <div className="h-20 flex items-center px-6 border-b border-[#1a1a1a] flex-shrink-0 relative">
-            <div className="flex items-center gap-3 w-full">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-[#39FF14]/20 bg-[#111]">
-                <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
-              </div>
-              {isSidebarOpen && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col"
-                >
-                  <span className="font-bold text-lg tracking-tight leading-none text-[#39FF14] whitespace-nowrap">HACK DOCS</span>
-                  <span className="text-[10px] font-mono text-gray-500 mt-1 uppercase tracking-widest whitespace-nowrap">Enterprise Pro</span>
-                </motion.div>
-              )}
-            </div>
+      {/* Top Header Navigation */}
+      <header className="bg-[#0a0a0a] border-b border-[#1a1a1a] min-h-[5rem] py-3 px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between shrink-0 gap-4 shadow-lg relative z-50">
+        {/* Logo Section */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-[#39FF14]/20 bg-[#111]">
+            <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
           </div>
-
-          <div className="px-6 py-4 flex-shrink-0">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="flex items-center gap-2 text-gray-400 hover:text-[#39FF14] transition-colors"
-            >
-              <Menu className="h-5 w-5" />
-              {isSidebarOpen && <span className="text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[#39FF14]">Recolher Menu</span>}
-            </button>
+          <div className="flex flex-col">
+            <span className="font-bold text-base md:text-lg tracking-tight leading-none text-[#39FF14] whitespace-nowrap">HACK DOCS</span>
+            <span className="text-[10px] font-mono text-gray-500 mt-1 uppercase tracking-widest whitespace-nowrap">Enterprise Pro</span>
           </div>
+        </div>
 
-          <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        {/* Navigation Items */}
+        <nav className="flex items-center gap-1 md:gap-2 max-w-full overflow-x-auto no-scrollbar py-1">
+          <NavItem 
+            icon={<LayoutDashboard className="h-4 w-4 md:h-5 md:w-5" />} 
+            label="Dashboard" 
+            active={activeTab === 'dashboard'} 
+            onClick={() => { setActiveTab('dashboard'); }} 
+          />
+          <NavItem 
+            icon={<FileText className="h-4 w-4 md:h-5 md:w-5" />} 
+            label="Gerador" 
+            active={activeTab === 'generate'} 
+            onClick={() => { setActiveTab('generate'); }} 
+          />
+          <NavItem 
+            icon={<Code className="h-4 w-4 md:h-5 md:w-5" />} 
+            label="Templates" 
+            active={activeTab === 'templates'} 
+            onClick={() => { setActiveTab('templates'); }} 
+          />
+          <NavItem 
+            icon={<History className="h-4 w-4 md:h-5 md:w-5" />} 
+            label="Histórico" 
+            active={activeTab === 'history'} 
+            onClick={() => { setActiveTab('history'); }} 
+          />
+          <NavItem 
+            icon={<Settings className="h-4 w-4 md:h-5 md:w-5" />} 
+            label="Configurar" 
+            active={activeTab === 'settings'} 
+            onClick={() => { setActiveTab('settings'); }} 
+          />
+          <a href={window.location.href} target="_blank" rel="noopener noreferrer" className="block">
             <NavItem 
-              icon={<LayoutDashboard className="h-5 w-5" />} 
-              label="Dashboard" 
-              active={activeTab === 'dashboard'} 
-              expanded={isSidebarOpen}
-              onClick={() => { setActiveTab('dashboard'); }} 
+              icon={<ExternalLink className="h-4 w-4 md:h-5 md:w-5" />} 
+              label="Nova Guia" 
+              active={false} 
+              onClick={() => {}} 
             />
-            <NavItem 
-              icon={<FileText className="h-5 w-5" />} 
-              label="Gerador de Doc" 
-              active={activeTab === 'generate'} 
-              expanded={isSidebarOpen}
-              onClick={() => { setActiveTab('generate'); }} 
-            />
-            <NavItem 
-              icon={<Code className="h-5 w-5" />} 
-              label="Templates" 
-              active={activeTab === 'templates'} 
-              expanded={isSidebarOpen}
-              onClick={() => { setActiveTab('templates'); }} 
-            />
-            <NavItem 
-              icon={<History className="h-5 w-5" />} 
-              label="Histórico Local" 
-              active={activeTab === 'history'} 
-              expanded={isSidebarOpen}
-              onClick={() => { setActiveTab('history'); }} 
-            />
-            <div className="pt-6 mt-6 border-t border-[#1a1a1a]">
-              <NavItem 
-                icon={<Settings className="h-5 w-5" />} 
-                label="Configurações" 
-                active={activeTab === 'settings'} 
-                expanded={isSidebarOpen}
-                onClick={() => { setActiveTab('settings'); }} 
-              />
-            </div>
-          </nav>
-        </motion.div>
+          </a>
+        </nav>
+      </header>
 
-        {/* Main Content */}
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden relative flex flex-col">
         <main className="flex-1 overflow-auto bg-[#050505] relative w-full">
           <AnimatePresence mode="wait">
             <motion.div
@@ -115,7 +89,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="p-10 min-h-full"
+              className="p-6 md:p-10 min-h-full"
             >
               {activeTab === 'dashboard' && <DashboardView store={store} onAction={() => setActiveTab('generate')} />}
               {activeTab === 'generate' && <GenerateView store={store} />}
@@ -223,7 +197,6 @@ function GenerateView({ store }: { store: any }) {
   const [finalContent, setFinalContent] = useState('');
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [signatures, setSignatures] = useState([{ name: '', role: '' }]);
-  const [isExporting, setIsExporting] = useState(false);
   const template = store.templates.find((t: any) => t.id === selectedId);
   const detected = template ? extractVariables(template.content) : [];
 
@@ -232,30 +205,6 @@ function GenerateView({ store }: { store: any }) {
       setFinalContent(replaceVariables(template.content, vars));
     }
   }, [template, vars]);
-
-  const handleExportPdf = async () => {
-    setIsExporting(true);
-    try {
-      const res = await fetch('/api/export/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content: finalContent, 
-          filename: `${template.name}.pdf` 
-        })
-      });
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${template.name}.pdf`;
-      a.click();
-    } catch (e) {
-      alert("Erro ao exportar PDF");
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const handleSaveToHistory = () => {
     if (!template) return;
@@ -271,6 +220,81 @@ function GenerateView({ store }: { store: any }) {
     };
     store.saveDocument(doc);
     alert("Salvo no histórico com sucesso!");
+  };
+
+  const insertDraggableImageBlock = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    let style = "width: 140px; height: 175px; border: 2px dashed #39FF14; background-color: #fcfcfc; border-radius: 8px; position: absolute; top: 20px; right: 20px; overflow: hidden; cursor: grab; text-align: center; font-family: sans-serif; resize: both; z-index: 50;";
+
+    const htmlString = `<div class="photo-upload-container absolute-draggable" style="${style}" contenteditable="false" ` +
+      `onmousedown="` +
+        `const rect = this.getBoundingClientRect(); ` +
+        `if (event.clientX > rect.right - 25 && event.clientY > rect.bottom - 25) return; ` +
+        `event.preventDefault(); ` +
+        `if (event.target.tagName.toLowerCase() === 'input') return; ` +
+        `const el = this; ` +
+        `const startX = event.clientX; ` +
+        `const startY = event.clientY; ` +
+        `const initX = parseInt(el.style.left || el.offsetLeft || 0); ` +
+        `const initY = parseInt(el.style.top || el.offsetTop || 0); ` +
+        `el.style.cursor = 'grabbing'; ` +
+        `let dragged = false; ` +
+        `const mouseMoveHandler = function(e){ ` +
+          `if (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3) dragged = true; ` +
+          `el.style.left = (initX + e.clientX - startX) + 'px'; ` +
+          `el.style.top = (initY + e.clientY - startY) + 'px'; ` +
+        `}; ` +
+        `const mouseUpHandler = function(e){ ` +
+          `document.removeEventListener('mousemove', mouseMoveHandler); ` +
+          `document.removeEventListener('mouseup', mouseUpHandler); ` +
+          `el.style.cursor = 'grab'; ` +
+          `if(!dragged && !el.dataset.loaded){ el.querySelector('input').click(); }` +
+        `}; ` +
+        `document.addEventListener('mousemove', mouseMoveHandler); ` +
+        `document.addEventListener('mouseup', mouseUpHandler);` +
+      `">` +
+      `<input type="file" accept="image/*, .png, .jpg, .jpeg, .webp, .svg, .gif, .bmp" style="display: none;" onchange="` +
+        `const inputEl = this;` +
+        `const file = inputEl.files[0];` +
+        `if (file) {` +
+          `const reader = new FileReader();` +
+          `reader.onload = (e) => {` +
+            `const parent = inputEl.parentElement;` +
+            `parent.style.border = '2px solid transparent';` +
+            `parent.style.backgroundColor = 'transparent';` +
+            `parent.dataset.loaded = 'true';` +
+            `const img = parent.querySelector('.photo-preview-img');` +
+            `img.src = e.target.result;` +
+            `img.style.display = 'block';` +
+            `parent.querySelector('.photo-upload-placeholder').style.display = 'none';` +
+          `};` +
+          `reader.readAsDataURL(file);` +
+        `}` +
+      `" />` +
+      `<img class="photo-preview-img" style="width: 100%; height: 100%; object-fit: cover; display: none; object-position: center;" />` +
+      `<div class="photo-upload-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 10px; color: #444; user-select: none; pointer-events: none;">` +
+        `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#39FF14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>` +
+        `<span style="font-size: 11px; font-weight: bold; line-height: 1.2; color: #111; pointer-events: none;">Anexo / Foto</span>` +
+        `<span style="font-size: 8px; color: #666; margin-top: 4px; pointer-events: none;">Clique / Arraste</span>` +
+      `</div>` +
+    `</div>&nbsp;`;
+
+    const editor = document.getElementById('editable-document-body');
+    if (editor) {
+      editor.focus();
+    }
+    
+    document.execCommand('insertHTML', false, htmlString);
+    
+    if (editor && !editor.contains(window.getSelection()?.anchorNode)) {
+      setFinalContent(prev => prev + htmlString);
+    } else {
+      setTimeout(() => {
+        if (editor) {
+          setFinalContent(editor.innerHTML);
+        }
+      }, 100);
+    }
   };
 
   return (
@@ -355,20 +379,22 @@ function GenerateView({ store }: { store: any }) {
                  onClick={() => {
                     const email = prompt("Digite o e-mail de destino:");
                     if(email) {
+                       const currentContent = document.getElementById('editable-document-body')?.innerHTML || finalContent;
                        fetch('/api/send-email', {
                          method: 'POST',
                          headers: { 'Content-Type': 'application/json' },
                          body: JSON.stringify({
                            to: email,
-                           subject: `Documento: ${template?.name}`,
-                           html: finalContent,
+                           subject: `Documento: ${template?.name || 'Documento'}`,
+                           html: currentContent,
                            smtpUser: store.smtpUser || '',
-                           smtpPass: store.smtpPass || ''
+                           smtpPass: store.smtpPass || '',
+                           smtpProvider: store.smtpProvider || 'gmail'
                          })
-                       }).then(r => r.json()).then(data => {
-                          if(data.success) alert("E-mail enviado com sucesso!");
-                          else alert("Erro ao enviar e-mail: " + (data.error || "Verifique credenciais nas configurações."));
-                       }).catch(() => alert("Erro ao conectar com servidor de e-mail."));
+                       }).then(res => res.json()).then(data => {
+                          if(data.success) alert("E-mail enviado!");
+                          else alert("Erro ao enviar: " + data.error);
+                       }).catch(() => alert("Erro crítico ao enviar e-mail."));
                     }
                  }}
                  className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
@@ -463,15 +489,6 @@ function GenerateView({ store }: { store: any }) {
                >
                  <Save className="h-3 w-3" /> Salvar Histórico
                </button>
-               
-               <button 
-                 onClick={handleExportPdf}
-                 disabled={isExporting}
-                 className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
-               >
-                 <FileDown className={cn("h-3 w-3 text-blue-400", isExporting && "animate-bounce")} /> 
-                 {isExporting ? "Gerando..." : "Download PDF"}
-               </button>
              </div>
           </div>
         </div>
@@ -484,7 +501,7 @@ function GenerateView({ store }: { store: any }) {
                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/30"></div>
                <div className="w-2.5 h-2.5 rounded-full bg-green-500/40"></div>
              </div>
-             <div className="flex gap-1 bg-[#1a1a1a] py-1 px-2 rounded-lg border border-[#333]">
+             <div className="flex gap-1 bg-[#1a1a1a] py-1 px-2 rounded-lg border border-[#333] items-center">
                <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('bold')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Negrito"><Bold className="w-4 h-4" /></button>
                <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('italic')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Itálico"><Italic className="w-4 h-4" /></button>
                <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('underline')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Sublinhado"><Underline className="w-4 h-4" /></button>
@@ -492,15 +509,26 @@ function GenerateView({ store }: { store: any }) {
                <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('justifyLeft')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Alinhar à Esquerda"><AlignLeft className="w-4 h-4" /></button>
                <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('justifyCenter')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Centralizar"><AlignCenter className="w-4 h-4" /></button>
                <button onMouseDown={(e) => e.preventDefault()} onClick={() => document.execCommand('justifyRight')} className="p-1.5 hover:bg-[#333] rounded text-gray-400 hover:text-white transition-colors" title="Alinhar à Direita"><AlignRight className="w-4 h-4" /></button>
+               
+               <div className="w-px h-4 bg-[#333] self-center mx-1"></div>
+               <button 
+                 onMouseDown={insertDraggableImageBlock} 
+                 className="px-2 py-1 bg-[#222]/50 hover:bg-[#222] hover:border-[#39FF14]/40 border border-[#222] rounded text-gray-400 hover:text-[#39FF14] transition-all flex items-center gap-1" 
+                 title="Inserir Imagem Ajustável (Foto/Logo)"
+               >
+                 <Image className="w-3.5 h-3.5 text-[#39FF14]" />
+                 <span className="text-[10px] font-bold hidden sm:inline">Imagem Ajustável</span>
+               </button>
              </div>
              <div className="text-[10px] font-mono text-gray-500 flex items-center gap-2">
                 <Printer className="h-3 w-3" /> PRINT_PREVIEW_A4
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-12 bg-white text-black min-h-0 select-text selection:bg-blue-100">
+          <div id="pdf-container" className="flex-1 overflow-y-auto p-12 bg-white text-black min-h-0 select-text selection:bg-blue-100">
              <div 
-               className={cn("outline-none max-w-none transition-all h-full", template?.format === 'html' ? "prose prose-sm" : "font-serif text-sm leading-8 whitespace-pre-wrap antialiased")}
+               id="editable-document-body"
+               className={cn("outline-none max-w-none transition-all min-h-full relative text-black bg-white", template?.format === 'html' ? "prose prose-sm" : "font-serif text-sm leading-8 whitespace-pre-wrap antialiased")}
                contentEditable 
                suppressContentEditableWarning
                onBlur={(e) => setFinalContent(e.currentTarget.innerHTML)}
@@ -820,9 +848,13 @@ function HistoryView({ store }: { store: any }) {
 
 function SettingsView({ store }: { store: any }) {
   const [smtpLogs, setSmtpLogs] = useState<any[]>([]);
+  const [isEditingPass, setIsEditingPass] = useState(false);
 
   useEffect(() => {
-    fetch('/api/logs').then(r => r.json()).then(data => setSmtpLogs(data));
+    fetch('/api/logs')
+      .then(r => r.json())
+      .then(data => setSmtpLogs(Array.isArray(data) ? data : []))
+      .catch(() => setSmtpLogs([]));
   }, []);
 
   return (
@@ -840,25 +872,105 @@ function SettingsView({ store }: { store: any }) {
             </h3>
             <div className="space-y-4">
               <div>
+                <label className="block text-[10px] font-mono text-gray-500 uppercase mb-2">Provedor de E-mail</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'gmail', label: 'Gmail', desc: 'smtp.gmail.com' },
+                    { id: 'yahoo', label: 'Yahoo Mail', desc: 'smtp.mail.yahoo.com' },
+                    { id: 'outlook', label: 'Outlook / Hotmail', desc: 'smtp.office365.com' },
+                    { id: 'other', label: 'Outro (Personalizado)', desc: 'Reconhecimento Auto' }
+                  ].map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => store.setSmtpProvider(p.id)}
+                      className={cn(
+                        "p-3 rounded-xl border flex flex-col items-start transition-all text-left",
+                        store.smtpProvider === p.id 
+                          ? "bg-[#39FF14]/10 border-[#39FF14] text-white shadow-[0_0_10px_-3px_rgba(57,255,20,0.3)]" 
+                          : "bg-[#050505] border-[#1a1a1a] hover:border-[#333] text-gray-400 hover:text-white"
+                      )}
+                    >
+                      <span className="text-xs font-bold leading-none">{p.label}</span>
+                      <span className="text-[8px] font-mono mt-1 opacity-60 uppercase tracking-tight">{p.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-mono text-gray-500 uppercase mb-2">E-mail Remetente</label>
                 <input 
                   type="email"
                   className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] outline-none transition-all"
-                  placeholder="exemplo@yahoo.com"
+                  placeholder="exemplo@gmail.com"
                   value={store.smtpUser}
                   onChange={e => store.setSmtpUser(e.target.value)}
                 />
               </div>
+
               <div>
                 <label className="block text-[10px] font-mono text-gray-500 uppercase mb-2">Senha App / Token</label>
-                <input 
-                  type="password"
-                  className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] outline-none transition-all"
-                  placeholder="••••••••••••••••"
-                  value={store.smtpPass}
-                  onChange={e => store.setSmtpPass(e.target.value)}
-                />
+                {(isEditingPass || !store.smtpPass) ? (
+                  <div className="flex gap-2">
+                    <input 
+                      type="password"
+                      className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] outline-none transition-all"
+                      placeholder="••••••••••••••••"
+                      value={store.smtpPass}
+                      onChange={e => store.setSmtpPass(e.target.value)}
+                    />
+                    {store.smtpPass && (
+                      <button 
+                        onClick={() => setIsEditingPass(false)}
+                        className="px-4 bg-[#39FF14] text-black font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#32e612] transition-colors whitespace-nowrap"
+                      >
+                        Salvar
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input 
+                      type="password"
+                      className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm text-gray-500 outline-none cursor-not-allowed"
+                      value="••••••••••••••••"
+                      disabled
+                    />
+                    <button 
+                      onClick={() => setIsEditingPass(true)}
+                      className="px-4 bg-[#1a1a1a] text-white font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#222] transition-colors whitespace-nowrap"
+                    >
+                      Trocar Senha
+                    </button>
+                  </div>
+                )}
                 <p className="text-[10px] text-gray-600 mt-2 italic px-1">Obs: Para Gmail ou Yahoo, utilize uma "Senha de Aplicativo".</p>
+              </div>
+
+              <div className="pt-4 border-t border-[#1a1a1a] flex items-center justify-between">
+                <div>
+                  <label className="block text-[10px] font-mono text-white uppercase font-bold tracking-widest mb-1">
+                    Salvar na Memória (Permanente)
+                  </label>
+                  <p className="text-[9px] text-gray-500 leading-normal max-w-[210px]">
+                    Se ativado, suas credenciais de e-mail e senha ficam guardadas no dispositivo. Se desativado, elas expiram ao final da sessão.
+                  </p>
+                </div>
+                <button
+                  onClick={() => store.setSaveSmtp(!store.saveSmtp)}
+                  className={cn(
+                    "w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center shrink-0",
+                    store.saveSmtp ? "bg-[#39FF14]" : "bg-gray-800"
+                  )}
+                >
+                  <motion.div
+                    layout
+                    className={cn(
+                      "w-4 h-4 rounded-full shadow-md bg-white transition-transform duration-200",
+                      store.saveSmtp ? "translate-x-6" : "translate-x-0"
+                    )}
+                  />
+                </button>
               </div>
             </div>
           </section>
@@ -887,7 +999,7 @@ function SettingsView({ store }: { store: any }) {
               <Clock className="h-4 w-4 text-orange-400" /> Logs de Comunicação
             </h3>
             <div className="flex-1 overflow-y-auto space-y-3">
-              {smtpLogs.map(log => (
+              {(smtpLogs || []).map(log => (
                 <div key={log.id} className="p-4 bg-[#050505] border border-[#1a1a1a] rounded-xl flex flex-col gap-1">
                    <div className="flex justify-between items-center">
                      <span className="text-[10px] font-bold text-gray-200 truncate pr-4">{log.to}</span>
@@ -902,7 +1014,7 @@ function SettingsView({ store }: { store: any }) {
                    <p className="text-[8px] text-gray-600 mt-1 uppercase tracking-widest">{log.timestamp}</p>
                 </div>
               ))}
-              {smtpLogs.length === 0 && (
+              {(!smtpLogs || smtpLogs.length === 0) && (
                 <div className="text-center py-12 text-gray-700 font-mono text-xs">Sem logs disponíveis.</div>
               )}
             </div>
@@ -915,39 +1027,26 @@ function SettingsView({ store }: { store: any }) {
 
 // --- Utils & Subcomponents ---
 
-function NavItem({ icon, label, active, expanded, onClick }: { icon: React.ReactNode, label: string, active: boolean, expanded: boolean, onClick: () => void }) {
+function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
   return (
     <motion.button 
-      whileHover={{ x: expanded ? 4 : 0 }}
+      whileHover={{ y: -1 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all font-medium text-sm border",
+        "flex items-center gap-2 px-3 py-2 md:px-4 md:py-2.5 rounded-xl transition-all font-medium text-xs md:text-sm border whitespace-nowrap",
         active 
-          ? "bg-[#39FF14] text-black border-[#39FF14] shadow-[0_0_20px_-5px_rgba(57,255,20,0.5)]" 
-          : "text-gray-500 hover:text-white border-transparent hover:bg-[#1a1a1a]/50"
+          ? "bg-[#39FF14] text-black border-[#39FF14] shadow-[0_0_15px_-3px_rgba(57,255,20,0.4)]" 
+          : "text-gray-400 hover:text-white border-transparent hover:bg-[#1a1a1a]/50"
       )}
     >
       <div className={cn(
-        "transition-colors",
-        active ? "text-black" : "text-gray-500 group-hover:text-white"
+        "transition-colors flex items-center justify-center shrink-0",
+        active ? "text-black" : "text-gray-500 hover:text-white"
       )}>
         {icon}
       </div>
-      {expanded && (
-        <motion.span 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="whitespace-nowrap overflow-hidden"
-        >
-          {label}
-        </motion.span>
-      )}
-      {active && expanded && (
-        <motion.div layoutId="active-pill" className="ml-auto">
-          <ChevronRight className="h-4 w-4" />
-        </motion.div>
-      )}
+      <span className="hidden sm:inline font-bold uppercase tracking-wider text-[10px] md:text-xs">{label}</span>
     </motion.button>
   );
 }

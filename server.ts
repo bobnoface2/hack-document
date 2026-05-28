@@ -62,7 +62,8 @@ initTemplates();
 
 async function startServer() {
   const app = express();
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   app.get('/imagem.ico', (req, res) => {
     const icoPath = path.join(process.cwd(), 'imagem.ico');
@@ -180,11 +181,38 @@ async function startServer() {
   // API: Send Email
   app.post('/api/send-email', async (req, res) => {
     try {
-      const { to, subject, html, smtpUser, smtpPass } = req.body;
+      const { to, subject, html, smtpUser, smtpPass, smtpProvider } = req.body;
       
+      let modifiedHtml = html;
+      const attachments: any[] = [];
+      let c = 0;
+      
+      // Converte tags de imagem base64 para attachments CID inline
+      modifiedHtml = modifiedHtml.replace(/<img[^>]+src="data:(image\/[^;]+);base64,([^"]+)"[^>]*>/g, (match: string, mime: string, base64: string) => {
+          c++;
+          const cid = `img${c}@hackdocument.pro`;
+          attachments.push({
+             filename: `image${c}.${mime.split('/')[1]}`,
+             content: base64,
+             encoding: 'base64',
+             cid: cid
+          });
+          return match.replace(`data:${mime};base64,${base64}`, `cid:${cid}`);
+      });
+
       let host = "smtp.mail.yahoo.com";
-      if (smtpUser.toLowerCase().includes('gmail')) host = "smtp.gmail.com";
-      else if (smtpUser.toLowerCase().includes('outlook') || smtpUser.toLowerCase().includes('hotmail')) host = "smtp.office365.com";
+      if (smtpProvider === 'gmail') {
+        host = "smtp.gmail.com";
+      } else if (smtpProvider === 'yahoo') {
+        host = "smtp.mail.yahoo.com";
+      } else if (smtpProvider === 'outlook') {
+        host = "smtp.office365.com";
+      } else {
+        // Fallback to auto-detection
+        if (smtpUser.toLowerCase().includes('gmail')) host = "smtp.gmail.com";
+        else if (smtpUser.toLowerCase().includes('outlook') || smtpUser.toLowerCase().includes('hotmail')) host = "smtp.office365.com";
+        else host = "smtp.mail.yahoo.com";
+      }
 
       const transporter = nodemailer.createTransport({
         host,
@@ -197,7 +225,8 @@ async function startServer() {
         from: `"DocuMestre Pro" <${smtpUser}>`,
         to,
         subject,
-        html,
+        html: modifiedHtml,
+        attachments,
       });
 
       // Log success
@@ -231,7 +260,7 @@ async function startServer() {
   app.get('/api/logs', async (req, res) => {
     try {
       const db = await getDB();
-      res.json(db.logs);
+      res.json(db.logs || []);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
