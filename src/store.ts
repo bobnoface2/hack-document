@@ -26,7 +26,11 @@ export function useAppStore() {
     const saved = localStorage.getItem(DOCS_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as GeneratedDocument[];
+        // Only keep documents generated today
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todaysDocs = parsed.filter(d => d.createdAt && d.createdAt.startsWith(todayStr));
+        return todaysDocs;
       } catch (e) {
         console.error("Failed to parse documents from localStorage", e);
       }
@@ -35,23 +39,6 @@ export function useAppStore() {
   });
 
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
-
-  const [smtpUser, setSmtpUser] = useState<string>(() => {
-    return localStorage.getItem('documestre_smtp_user') || '';
-  });
-
-  const [smtpPass, setSmtpPass] = useState<string>(() => {
-    return localStorage.getItem('documestre_smtp_pass') || '';
-  });
-
-  const [smtpProvider, setSmtpProvider] = useState<string>(() => {
-    return localStorage.getItem('documestre_smtp_provider') || 'gmail';
-  });
-
-  const [saveSmtp, setSaveSmtp] = useState<boolean>(() => {
-    const saved = localStorage.getItem('documestre_save_smtp');
-    return saved !== null ? saved === 'true' : true;
-  });
 
   const [geminiKey, setGeminiKey] = useState<string>(() => {
     return localStorage.getItem('documestre_gemini_key') || '';
@@ -86,28 +73,12 @@ export function useAppStore() {
       // Load other states
       const docsStr = await apiGet(DOCS_KEY);
       if (docsStr) {
-        try { setDocuments(JSON.parse(docsStr)); } catch(e) {}
-      }
-
-      let loadedSaveSmtp = true;
-      const saveSmtpStr = await apiGet('documestre_save_smtp');
-      if (saveSmtpStr !== null && saveSmtpStr !== undefined) {
-        loadedSaveSmtp = saveSmtpStr === 'true';
-        setSaveSmtp(loadedSaveSmtp);
-      }
-
-      if (loadedSaveSmtp) {
-        const smtpU = await apiGet('documestre_smtp_user');
-        if (smtpU !== null && smtpU !== undefined) setSmtpUser(smtpU);
-
-        const smtpP = await apiGet('documestre_smtp_pass');
-        if (smtpP !== null && smtpP !== undefined) setSmtpPass(smtpP);
-
-        const smtpPr = await apiGet('documestre_smtp_provider');
-        if (smtpPr !== null && smtpPr !== undefined) setSmtpProvider(smtpPr);
-      } else {
-        setSmtpUser('');
-        setSmtpPass('');
+        try { 
+          const parsed = JSON.parse(docsStr); 
+          const todayStr = new Date().toISOString().split('T')[0];
+          const todaysDocs = parsed.filter((d: any) => d.createdAt && d.createdAt.startsWith(todayStr));
+          setDocuments(todaysDocs);
+        } catch(e) {}
       }
 
       const geminiK = await apiGet('documestre_gemini_key');
@@ -117,6 +88,14 @@ export function useAppStore() {
     };
     
     loadFromDb();
+
+    // Check for day change every minute
+    const interval = setInterval(() => {
+      const currentToday = new Date().toISOString().split('T')[0];
+      setDocuments(prev => prev.filter(d => d.createdAt && d.createdAt.startsWith(currentToday)));
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const apiSet = async (key: string, value: string) => {
@@ -139,42 +118,6 @@ export function useAppStore() {
     localStorage.setItem(DOCS_KEY, JSON.stringify(documents));
     apiSet(DOCS_KEY, JSON.stringify(documents));
   }, [documents, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('documestre_save_smtp', String(saveSmtp));
-    apiSet('documestre_save_smtp', String(saveSmtp));
-    if (!saveSmtp) {
-      setSmtpUser('');
-      setSmtpPass('');
-      localStorage.removeItem('documestre_smtp_user');
-      localStorage.removeItem('documestre_smtp_pass');
-      apiSet('documestre_smtp_user', '');
-      apiSet('documestre_smtp_pass', '');
-    }
-  }, [saveSmtp, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (saveSmtp) {
-      localStorage.setItem('documestre_smtp_user', smtpUser);
-      apiSet('documestre_smtp_user', smtpUser);
-    }
-  }, [smtpUser, isLoaded, saveSmtp]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (saveSmtp) {
-      localStorage.setItem('documestre_smtp_pass', smtpPass);
-      apiSet('documestre_smtp_pass', smtpPass);
-    }
-  }, [smtpPass, isLoaded, saveSmtp]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    localStorage.setItem('documestre_smtp_provider', smtpProvider);
-    apiSet('documestre_smtp_provider', smtpProvider);
-  }, [smtpProvider, isLoaded]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -237,14 +180,6 @@ export function useAppStore() {
     deleteTemplate,
     saveDocument,
     deleteDocument,
-    smtpUser,
-    setSmtpUser,
-    smtpPass,
-    setSmtpPass,
-    smtpProvider,
-    setSmtpProvider,
-    saveSmtp,
-    setSaveSmtp,
     geminiKey,
     setGeminiKey,
   };

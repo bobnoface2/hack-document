@@ -4,7 +4,6 @@ import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import nodemailer from 'nodemailer';
 import os from 'os';
 import { defaultTemplates } from './src/defaultTemplates';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -179,99 +178,19 @@ async function startServer() {
     }
   });
 
-  // API: Send Email
-  app.post('/api/send-email', async (req, res) => {
-    try {
-      const { to, subject, html, smtpUser, smtpPass, smtpProvider } = req.body;
-      
-      let modifiedHtml = html;
-      const attachments: any[] = [];
-      let c = 0;
-      
-      // Converte tags de imagem base64 para attachments CID inline
-      modifiedHtml = modifiedHtml.replace(/<img[^>]+src="data:(image\/[^;]+);base64,([^"]+)"[^>]*>/g, (match: string, mime: string, base64: string) => {
-          c++;
-          const cid = `img${c}@hackdocument.pro`;
-          attachments.push({
-             filename: `image${c}.${mime.split('/')[1]}`,
-             content: base64,
-             encoding: 'base64',
-             cid: cid
-          });
-          return match.replace(`data:${mime};base64,${base64}`, `cid:${cid}`);
-      });
-
-      let host = "smtp.mail.yahoo.com";
-      if (smtpProvider === 'gmail') {
-        host = "smtp.gmail.com";
-      } else if (smtpProvider === 'yahoo') {
-        host = "smtp.mail.yahoo.com";
-      } else if (smtpProvider === 'outlook') {
-        host = "smtp.office365.com";
-      } else {
-        // Fallback to auto-detection
-        if (smtpUser.toLowerCase().includes('gmail')) host = "smtp.gmail.com";
-        else if (smtpUser.toLowerCase().includes('outlook') || smtpUser.toLowerCase().includes('hotmail')) host = "smtp.office365.com";
-        else host = "smtp.mail.yahoo.com";
-      }
-
-      const transporter = nodemailer.createTransport({
-        host,
-        port: 465,
-        secure: true,
-        auth: { user: smtpUser, pass: smtpPass },
-      });
-
-      await transporter.sendMail({
-        from: `"DocuMestre Pro" <${smtpUser}>`,
-        to,
-        subject,
-        html: modifiedHtml,
-        attachments,
-      });
-
-      // Log success
-      const db = await getDB();
-      db.logs.unshift({
-        id: Date.now().toString(),
-        to,
-        subject,
-        timestamp: new Date().toLocaleString(),
-        status: 'Sucesso'
-      });
-      if (db.logs.length > 50) db.logs.pop();
-      await saveDB(db);
-
-      res.json({ success: true });
-    } catch (err: any) {
-      // Log failure
-      const db = await getDB();
-      db.logs.unshift({
-        id: Date.now().toString(),
-        to: req.body.to,
-        subject: req.body.subject,
-        timestamp: new Date().toLocaleString(),
-        status: `Erro: ${err.message}`
-      });
-      await saveDB(db);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get('/api/logs', async (req, res) => {
-    try {
-      const db = await getDB();
-      res.json(db.logs || []);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
 
   // Client lazy initialization helper for Gemini
-  function getGeminiClient() {
-    const key = process.env.GEMINI_API_KEY;
+  async function getGeminiClient() {
+    let dbKey = '';
+    try {
+      const db = await getDB();
+      dbKey = db.store['documestre_gemini_key'];
+    } catch (e) {
+      // ignore
+    }
+    const key = dbKey || process.env.GEMINI_API_KEY;
     if (!key) {
-      throw new Error("Opção indisponível: GEMINI_API_KEY não configurada nos Secrets da aplicação.");
+      throw new Error("Opção indisponível: GEMINI_API_KEY não configurada nos Ajustes (Preferências) do sistema.");
     }
     return new GoogleGenAI({
       apiKey: key,
@@ -289,7 +208,7 @@ async function startServer() {
       const { content } = req.body;
       if (!content) return res.status(400).json({ error: "Conteúdo vazío." });
 
-      const ai = getGeminiClient();
+      const ai = await getGeminiClient();
       const prompt = `Faça UMA CORREÇÃO ORTOGRÁFICA E GRAMATICAL profunda neste texto.
 Regras:
 1. Preserve todas as tags HTML originais e classes CSS Tailwind.
@@ -316,7 +235,7 @@ ${content}`;
       const { content } = req.body;
       if (!content) return res.status(400).json({ error: "Conteúdo vazío." });
 
-      const ai = getGeminiClient();
+      const ai = await getGeminiClient();
       const prompt = `Corrija e melhore visualmente a estrura de ESPAÇAMENTOS (margin, padding, line-height, quebras de bloco) deste HTML de documento aplicando as classes corretas de Tailwind CSS.
 Regras:
 1. Deixe o documento com visual profissional, organizado e fácil de ler. 
@@ -337,13 +256,47 @@ ${content}`;
     }
   });
 
+  // AI Endpoint: Batch Parse Data
+  app.post('/api/ai/batch-parse', async (req, res) => {
+    try {
+      const { text, variables } = req.body;
+      if (!text || !variables || !Array.isArray(variables)) {
+        return res.status(400).json({ error: "Propriedades text e variables são obrigatórias." });
+      }
+
+      const ai = await getGeminiClient();
+      const prompt = `ATUE COMO UM EXTRATOR DE DADOS ESTRUTURADOS.
+O usuário enviou os seguintes dados (pode ser texto solto, lista ou tabular delimitado):
+${text}
+
+Preciso que você leia e identifique múltiplos "registros" (ex: múltiplas pessoas/itens).
+Para CADA registro encontrado, extraia os valores para as seguintes chaves: ${variables.join(', ')}.
+Se algum campo não estiver presente ou for deduzível como vazio, deixe como string vazia "".
+A resposta DEVE ser estritamente um array JSON de objetos válidos. 
+Exemplo de formato esperado: [{"nome": "joao", "cpf": "123"}, {"nome": "maria", "cpf": "456"}]
+Nenhum texto adicional ou tags markdown, retorne a resposta OBRIGATORIAMENTE em JSON puro no formato List<Object>.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+      
+      let resultText = response.text || "[]";
+      const parsed = JSON.parse(resultText);
+      res.json({ success: true, records: parsed });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // AI Endpoint: Templatize (Extract Data to Vars)
   app.post('/api/ai/templatize', async (req, res) => {
     try {
       const { content } = req.body;
       if (!content) return res.status(400).json({ error: "Conteúdo vazío." });
 
-      const ai = getGeminiClient();
+      const ai = await getGeminiClient();
       const prompt = `Leia todo o documento abaixo. Localize dados específicos e reais (como nomes próprios, CPFs, RGs, Reais/Moedas, Datas, Endereços, etc.) e os SUBSTITUA por variáveis usando exatas duas chaves: {{nome_da_variavel}}.
 Exemplo: Se achar "João Silva", troque por {{nome_cliente}}. Se achar "01/05/2026", troque por {{data_vencimento}}.
 
@@ -374,7 +327,7 @@ ${content}`;
         return res.status(400).json({ error: "O prompt de geração de documento não foi fornecido." });
       }
 
-      const ai = getGeminiClient();
+      const ai = await getGeminiClient();
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
         contents: `Crie um modelo/template de documento profissional e elegante baseado na solicitação do usuário: "${prompt}".
@@ -382,7 +335,8 @@ Siga as diretrizes:
 1. Deve ser escrito em formato HTML sem tags HTML/head/body globais, apenas a div externa e elementos filhos estruturados.
 2. Insira classes limpas do Tailwind CSS para garantir sofisticação visual (margens, espaçamento de linha legível de cerca de 1.8x, cabeçalho sutil, negritos e seções divisórias). A cor do texto deve ser predominantemente preta ou carvão leve com fundo branco para excelente leitura ao preencher ou imprimir.
 3. Crie e posicione variáveis usando o formato de duas chaves duplas {{nome_variavel}} em todos os pontos dinâmicos que deveriam ser completados no contexto real (ex: {{data_inicio}}, {{valor_total}}, {{dados_contratado}}).
-4. Forneça um título enxuto e profissional correspondente para o template.`,
+4. O layout DEVE CABER EM UMA ÚNICA PÁGINA A4. Use classes compactas (text-xs ou text-sm, leading-tight) e reduza paddings e margens longas. A impressão não pode pular para a página 2.
+5. Forneça um título enxuto e profissional correspondente para o template.`,
         config: {
           systemInstruction: "Você é uma inteligência artificial assistente de design de documentos especialista em criar templates em HTML com variáveis automáticas.",
           responseMimeType: "application/json",
@@ -414,14 +368,18 @@ Siga as diretrizes:
         return res.status(400).json({ error: "Arquivo vazio ou não providenciado." });
       }
 
-      const ai = getGeminiClient();
-      const prompt = `Analise o documento fornecido na imagem ou PDF.
-Transcreva 100% de todo o conteúdo textual, a estrutura correspondente e crie um HTML incrivelmente bonito usando classes do Tailwind CSS.
+      const ai = await getGeminiClient();
+      const prompt = `ATUE COMO UMA MÁQUINA DE XEROX (FOTOCOPIADORA) INTELIGENTE.
+Sua única função é "escanear" a imagem fornecida e recriar EXATAMENTE O MESMO DOCUMENTO em HTML com Tailwind CSS. 
 Regras:
-1. Retorne HTML contendo todos os dados, espaçamentos, título, margens, com classes do Tailwind aplicadas apropriadamente.
-2. Identifique partes dinâmicas como CPFs reais, Nomes do cliente, valores e substitua por formato de duas chaves {{nome_variavel}}.
-3. Retorne tudo formatado visualmente para impressão (exemplo de classes no wrapper: bg-white p-10 max-w-4xl mx-auto shadow-sm border).
-4. Retorne apenas JSON com as propriedades "name" (um titulo limpo) e "content" (todo HTML criado). Sem tags markdown \`\`\`json ou \`\`\`html.`;
+1. OBRIGAÇÃO MÁXIMA E ABSOLUTA CÓPIA FIEL: O documento gerado DEVE SER UMA CÓPIA 100% FIEL E IDÊNTICA AO ORIGINAL. Não modifique absolutamente nada no texto, na ordem ou na estrutura.
+2. TABELAS E GRADES: Se houver uma tabela (ex: folha de ponto, relatórios), recrie EXATAMENTE o número de linhas e colunas. USE BORDAS CORRETAMENTE (border, border-black, border-collapse, etc.). Coloque TODAS as linhas verticais (border-l, border-r, divide-x) e horizontais (border-t, border-b, divide-y) que estiverem presentes e visíveis na foto. NÃO ignore linhas internas ou de separação.
+3. ABSOLUTAMENTE TODOS OS DADOS ESPECÍFICOS E PREENCHIDOS DEVEM VIRAR VARIÁVEIS! Isso inclui CPFs, Nomes, Valores, datas, horários, horas trabalhadas, números, etc. Substitua-os pelo formato de chaves {{nome_da_variavel}}.
+4. REGRA CRUCIAL DE CAMPOS VAZIOS: Se um campo (ou célula da tabela) estiver vazio, em branco ou tiver apenas linha pontilhada/sublinhado/espaço em branco, DEIXE EM BRANCO. NÃO invente variáveis para espaços vazios, NÃO insira "-" ou "___", NÃO preencha células vazias! Apenas mantenha a estrutura da célula em branco.
+5. Para campos de assinatura, crie apenas uma linha simples com o texto embaixo (ex: <div class="text-center mt-8"><div class="border-t border-black w-48 mx-auto mb-2"></div><p>Assinatura</p></div>).
+6. O layout DEVE CABER EM UMA ÚNICA PÁGINA A4. Use classes compactas (text-[10px], text-xs, py-1) e evite gap/margin excessivo.
+7. Retorne apenas JSON com as propriedades "name" (um titulo limpo) e "content" (todo HTML criado). Sem tags markdown \`\`\`json ou \`\`\`html.
+8. VOCÊ DEVE SER EXATAMENTE DETERMINÍSTICO. NUNCA INVENTE DADOS que não estão explicitamente visíveis na imagem.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -435,7 +393,7 @@ Regras:
           }
         ],
         config: {
-          systemInstruction: "Você é um assistente OCR inteligente e especialista em UI/UX para documentos HTML.",
+          systemInstruction: "VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens que recebe convertendo 100% de precisão para HTML/Tailwind. Você tem amnésia criativa: você nunca inventa texto, nunca preenche espaços em branco, e nunca altera a formatação original além de converter para Tailwind.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -445,7 +403,9 @@ Regras:
             },
             required: ["name", "content"]
           },
-          temperature: 0.1
+          temperature: 0.0,
+          topP: 0.1,
+          topK: 1
         }
       });
 

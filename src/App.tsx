@@ -5,13 +5,64 @@ import {
   Trash2, Mail, TerminalSquare, Menu, X, LayoutDashboard, Sparkles, 
   ChevronRight, ArrowRight, CheckCircle2, AlertCircle, FileDown, 
   Clock, Send, ShieldCheck, Bold, Italic, Underline, AlignLeft,
-  AlignCenter, AlignRight, AlignJustify, ExternalLink, Image, Camera, UploadCloud
+  AlignCenter, AlignRight, AlignJustify, ExternalLink, Image, Camera, UploadCloud, Brush, Copy, Wand2, ListOrdered, DownloadCloud
 } from 'lucide-react';
 import { generateId, extractVariables, replaceVariables, cn } from './lib/utils';
 import { Template, GeneratedDocument } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Tab = 'dashboard' | 'generate' | 'templates'  | 'history' | 'settings';
+const copyRichText = async (htmlString: string) => {
+  try {
+    const formattedHtml = `
+      <html>
+        <head>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+          </style>
+        </head>
+        <body>
+          ${htmlString}
+        </body>
+      </html>
+    `;
+    const blob = new Blob([formattedHtml], { type: 'text/html' });
+    const textPlain = htmlString.replace(/<[^>]*>/g, '');
+    const textBlob = new Blob([textPlain], { type: 'text/plain' });
+    
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': blob,
+        'text/plain': textBlob
+      })
+    ]);
+    return true;
+  } catch (err) {
+    console.error("Erro ao copiar Rich Text:", err);
+    try {
+      await navigator.clipboard.writeText(htmlString);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+};
+
+const handleSendViaWebmail = async (provider: 'gmail' | 'yahoo', htmlContent: string) => {
+  const success = await copyRichText(htmlContent);
+  if (success) {
+    alert("✨ E-mail Formatado Copiado com Sucesso!\n\n1. O design completo do e-mail foi copiado automaticamente para sua Área de Transferência.\n\n2. Agora vamos abrir seu Webmail em uma nova janela.\n\n3. Basta clicar na caixa onde se escreve a mensagem e dar 'Ctrl + V' (ou botão direito -> 'Colar').\n\nPronto! O seu e-mail manterá TODA a formatação original dele: fotos/imagens, botões de ação e cores!");
+  } else {
+    alert("Copiamos o código HTML do e-mail. Você pode colar diretamente no seu editor ou webmail.");
+  }
+  
+  if (provider === 'gmail') {
+    window.open('https://mail.google.com/mail/?view=cm&fs=1', '_blank');
+  } else if (provider === 'yahoo') {
+    window.open('https://compose.mail.yahoo.com/', '_blank');
+  }
+};
+
+type Tab = 'dashboard' | 'generate' | 'templates'  | 'history' | 'settings' | 'creation';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -31,7 +82,7 @@ export default function App() {
             <img src="/imagem.ico" alt="Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://img.icons8.com/neon/96/cyber-security.png'; }} />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-base md:text-lg tracking-tight leading-none text-[#39FF14] whitespace-nowrap">HACK DOCS</span>
+            <span className="font-bold text-base md:text-lg tracking-tight leading-none text-[#39FF14] whitespace-nowrap">HACK DOCUMENT</span>
             <span className="text-[10px] font-mono text-gray-500 mt-1 uppercase tracking-widest whitespace-nowrap">Enterprise Pro</span>
           </div>
         </div>
@@ -68,14 +119,12 @@ export default function App() {
             active={activeTab === 'settings'} 
             onClick={() => { setActiveTab('settings'); }} 
           />
-          <a href={window.location.href} target="_blank" rel="noopener noreferrer" className="block">
-            <NavItem 
-              icon={<ExternalLink className="h-4 w-4 md:h-5 md:w-5" />} 
-              label="Nova Guia" 
-              active={false} 
-              onClick={() => {}} 
-            />
-          </a>
+          <NavItem 
+            icon={<Brush className="h-4 w-4 md:h-5 md:w-5" />} 
+            label="Ferramentas de Criação" 
+            active={activeTab === 'creation'} 
+            onClick={() => { setActiveTab('creation'); }} 
+          />
         </nav>
       </header>
 
@@ -96,6 +145,7 @@ export default function App() {
               {activeTab === 'templates' && <TemplatesView store={store} />}
               {activeTab === 'history' && <HistoryView store={store} />}
               {activeTab === 'settings' && <SettingsView store={store} />}
+              {activeTab === 'creation' && <CreationView store={store} />}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -199,11 +249,73 @@ function GenerateView({ store }: { store: any }) {
   const [signatures, setSignatures] = useState([{ name: '', role: '' }]);
   const template = store.templates.find((t: any) => t.id === selectedId);
   const detected = template ? extractVariables(template.content) : [];
+  
+  const [localFormat, setLocalFormat] = useState<'html' | 'text'>('html');
+
+  useEffect(() => {
+    if (template) {
+      setLocalFormat(template.format);
+    }
+  }, [template?.id]);
 
   const [leftTab, setLeftTab] = useState<'fill' | 'ai'>('fill');
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeActions, setActiveActions] = useState<Record<string, boolean>>({});
+
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchText, setBatchText] = useState('');
+
+  const handleBatchGenerate = async () => {
+    if (!batchText.trim()) return alert("Cole os dados primeiro.");
+    if (detected.length === 0) return alert("Seu modelo atual não possui nenhuma variável {{variavel}} para preencher.");
+    setActiveActions(prev => ({ ...prev, 'isBatching': true }));
+    try {
+      const response = await fetch('/api/ai/batch-parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: batchText, variables: detected })
+      });
+      const data = await response.json();
+      if (data.success && data.records && data.records.length > 0) {
+        let count = 0;
+        for (const record of data.records) {
+          // preenche o template
+          let filledContent = template.content;
+          for (const variable of detected) {
+            const regex = new RegExp(`\\{\\{${variable}\\}\\}`, 'g');
+            filledContent = filledContent.replace(regex, record[variable] || '');
+          }
+
+          // Tenta pegar alguma variavel principal para nomear o documento, ex: NOME
+          const nameVar = record['nome'] || record['Nome'] || record['NOME'] || record[detected[0]];
+          const documentName = nameVar ? `${template.name} - ${nameVar}` : `${template.name} - Automação ${count+1}`;
+
+          const doc: any = {
+            id: generateId(),
+            templateId: template.id,
+            templateName: documentName,
+            type: template.type,
+            format: localFormat,
+            variables: record, // O que ele preencheu 
+            finalContent: filledContent,
+            createdAt: new Date().toISOString()
+          };
+          store.saveDocument(doc);
+          count++;
+        }
+        alert(`Sucesso! Foram gerados e salvos ${count} documentos na aba Histórico.`);
+        setShowBatchModal(false);
+        setBatchText('');
+      } else {
+        alert("Erro: IA não conseguiu identificar registros no texto fornecido.");
+      }
+    } catch (err) {
+      alert("Erro ao processar lote: " + err);
+    } finally {
+      setActiveActions(prev => ({ ...prev, 'isBatching': false }));
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -340,14 +452,20 @@ function GenerateView({ store }: { store: any }) {
 
   const handleSaveToHistory = () => {
     if (!template) return;
+    
+    const docName = prompt("Qual título/nome deseja dar a este documento gerado?", template.name);
+    if (!docName) return; // cancelou ou deixou vazio
+    
+    const currentContent = document.getElementById('editable-document-body')?.innerHTML || finalContent;
+
     const doc: GeneratedDocument = {
       id: generateId(),
       templateId: template.id,
-      templateName: template.name,
+      templateName: docName,
       type: template.type,
-      format: template.format,
+      format: localFormat,
       variables: vars,
-      finalContent: finalContent,
+      finalContent: currentContent,
       createdAt: new Date().toISOString()
     };
     store.saveDocument(doc);
@@ -356,13 +474,14 @@ function GenerateView({ store }: { store: any }) {
 
   const insertDraggableImageBlock = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
+    const blockId = 'img-block-' + Math.random().toString(36).substring(2, 9);
     let style = "width: 140px; height: 175px; border: 2px dashed #39FF14; background-color: #fcfcfc; border-radius: 8px; position: absolute; top: 20px; right: 20px; overflow: hidden; cursor: grab; text-align: center; font-family: sans-serif; resize: both; z-index: 50;";
 
-    const htmlString = `<div class="photo-upload-container absolute-draggable" style="${style}" contenteditable="false" ` +
+    const htmlString = `<div id="${blockId}" class="photo-upload-container absolute-draggable" style="${style}" contenteditable="false" ` +
+      `onclick="if(!this.dataset.justDragged && !this.dataset.loaded) { const input = this.querySelector('input'); if(input) { input.value = ''; input.click(); } }" ` +
       `onmousedown="` +
         `const rect = this.getBoundingClientRect(); ` +
         `if (event.clientX > rect.right - 25 && event.clientY > rect.bottom - 25) return; ` +
-        `event.preventDefault(); ` +
         `if (event.target.tagName.toLowerCase() === 'input') return; ` +
         `const el = this; ` +
         `const startX = event.clientX; ` +
@@ -380,36 +499,38 @@ function GenerateView({ store }: { store: any }) {
           `document.removeEventListener('mousemove', mouseMoveHandler); ` +
           `document.removeEventListener('mouseup', mouseUpHandler); ` +
           `el.style.cursor = 'grab'; ` +
-          `if(!dragged && !el.dataset.loaded){ el.querySelector('input').click(); }` +
+          `if(dragged) { setTimeout(() => { el.dataset.justDragged = 'true'; }, 0); setTimeout(() => { el.dataset.justDragged = ''; }, 100); }` +
         `}; ` +
         `document.addEventListener('mousemove', mouseMoveHandler); ` +
         `document.addEventListener('mouseup', mouseUpHandler);` +
       `">` +
-      `<input type="file" accept="image/*, .png, .jpg, .jpeg, .webp, .svg, .gif, .bmp" style="display: none;" onchange="` +
-        `const inputEl = this;` +
-        `const file = inputEl.files[0];` +
+      `<input type="file" accept="image/*, .png, .jpg, .jpeg, .webp, .svg, .gif, .bmp" style="position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none;" onchange="` +
+        `const file = this.files[0];` +
         `if (file) {` +
           `const reader = new FileReader();` +
           `reader.onload = (e) => {` +
-            `const parent = inputEl.parentElement;` +
+            `const parent = document.getElementById('${blockId}');` +
+            `if (!parent) return;` +
             `parent.style.border = '2px solid transparent';` +
             `parent.style.backgroundColor = 'transparent';` +
             `parent.dataset.loaded = 'true';` +
             `const img = parent.querySelector('.photo-preview-img');` +
-            `img.src = e.target.result;` +
-            `img.style.display = 'block';` +
-            `parent.querySelector('.photo-upload-placeholder').style.display = 'none';` +
+            `if (img) { img.src = e.target.result; img.style.display = 'block'; }` +
+            `const plc = parent.querySelector('.photo-upload-placeholder');` +
+            `if (plc) plc.style.display = 'none';` +
+            `const editor = document.getElementById('editable-document-body');` +
+            `if (editor) editor.focus();` +
           `};` +
           `reader.readAsDataURL(file);` +
         `}` +
       `" />` +
       `<img class="photo-preview-img" style="width: 100%; height: 100%; object-fit: cover; display: none; object-position: center;" />` +
       `<div class="photo-upload-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 10px; color: #444; user-select: none; pointer-events: none;">` +
-        `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#39FF14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>` +
-        `<span style="font-size: 11px; font-weight: bold; line-height: 1.2; color: #111; pointer-events: none;">Anexo / Foto</span>` +
-        `<span style="font-size: 8px; color: #666; margin-top: 4px; pointer-events: none;">Clique / Arraste</span>` +
+      `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#39FF14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>` +
+      `<span style="font-size: 11px; font-weight: bold; line-height: 1.2; color: #111; pointer-events: none;">Anexo / Foto</span>` +
+      `<span style="font-size: 8px; color: #666; margin-top: 4px; pointer-events: none;">Clique / Arraste</span>` +
       `</div>` +
-    `</div>&nbsp;`;
+      `</div>&nbsp;`;
 
     const editor = document.getElementById('editable-document-body');
     if (editor) {
@@ -425,7 +546,7 @@ function GenerateView({ store }: { store: any }) {
         if (editor) {
           setFinalContent(editor.innerHTML);
         }
-      }, 100);
+      }, 10);
     }
   };
 
@@ -435,7 +556,7 @@ function GenerateView({ store }: { store: any }) {
       <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6 flex flex-wrap items-center justify-between gap-6 relative overflow-hidden group flex-shrink-0">
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
-            <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Selecionar Modelo</label>
+            <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Selecionar Modelo Base</label>
             <select 
               className="bg-[#050505] border border-[#222222] rounded-lg text-sm p-3 w-full w-72 focus:border-[#39FF14] transition-all outline-none"
               value={selectedId}
@@ -449,6 +570,44 @@ function GenerateView({ store }: { store: any }) {
               ))}
             </select>
           </div>
+          
+          <div className="flex flex-col">
+            <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Formato (Editor e IA)</label>
+            <select 
+              className="bg-[#050505] border border-[#222222] rounded-lg text-sm p-3 w-40 focus:border-[#39FF14] transition-all outline-none text-white"
+              value={localFormat}
+              onChange={(e) => setLocalFormat(e.target.value as any)}
+            >
+              <option value="text">Texto Puro</option>
+              <option value="html">HTML Dynamic</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+           <button 
+             onClick={() => {
+               const editedContent = document.getElementById('editable-document-body')?.innerHTML || finalContent;
+               const name = prompt("Digite o nome para o novo template (Modelo):", template ? `${template.name} - Editado` : "Novo Modelo");
+               if (name) {
+                  const newTmpl = {
+                    id: generateId(),
+                    name: name,
+                    type: template?.type || 'documento',
+                    format: localFormat,
+                    content: editedContent || 'Escreva seu modelo aqui...',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                  };
+                  store.addTemplate(newTmpl);
+                  setSelectedId(newTmpl.id);
+                  alert("🎉 Modelo Salvo com Sucesso! \nEle já está selecionado e disponível na aba Meus Modelos.");
+               }
+             }}
+             className="px-5 py-3 bg-[#39FF14] text-black font-bold rounded-xl hover:bg-[#7FFF00] transition-colors text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#39FF14]/20"
+           >
+             <Save className="h-4 w-4" /> Salvar como Modelo
+           </button>
         </div>
       </div>
 
@@ -642,6 +801,22 @@ function GenerateView({ store }: { store: any }) {
                   )}
                 </button>
               </div>
+
+              {/* Action 6: Batch Generation */}
+              <div className="p-4 rounded-xl border border-[#1a1a1a] bg-[#050505] space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-yellow-400">
+                  <ListOrdered className="h-4 w-4" /> 6. Preenchimento Automático
+                </div>
+                <p className="text-xs text-gray-400">
+                  Preencha automaticamente múltiplas cópias deste modelo enviando uma lista de dados (Copie e cole do Excel ou CSV).
+                </p>
+                <button
+                  onClick={() => setShowBatchModal(true)}
+                  className="w-full py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg disabled:bg-gray-800 disabled:text-gray-400 transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-[0_0_15px_-3px_rgba(234,179,8,0.3)]"
+                >
+                  <ListOrdered className="h-3.5 w-3.5" /> Enviar Planilha de Lote
+                </button>
+              </div>
             </div>
           )}
 
@@ -658,31 +833,27 @@ function GenerateView({ store }: { store: any }) {
                   <Plus className="h-3 w-3" /> Assinaturas
                </button>
                
+
                <button 
                  onClick={() => {
-                    const email = prompt("Digite o e-mail de destino:");
-                    if(email) {
-                       const currentContent = document.getElementById('editable-document-body')?.innerHTML || finalContent;
-                       fetch('/api/send-email', {
-                         method: 'POST',
-                         headers: { 'Content-Type': 'application/json' },
-                         body: JSON.stringify({
-                           to: email,
-                           subject: `Documento: ${template?.name || 'Documento'}`,
-                           html: currentContent,
-                           smtpUser: store.smtpUser || '',
-                           smtpPass: store.smtpPass || '',
-                           smtpProvider: store.smtpProvider || 'gmail'
-                         })
-                       }).then(res => res.json()).then(data => {
-                          if(data.success) alert("E-mail enviado!");
-                          else alert("Erro ao enviar: " + data.error);
-                       }).catch(() => alert("Erro crítico ao enviar e-mail."));
-                    }
+                   const currentContent = document.getElementById('editable-document-body')?.innerHTML || finalContent;
+                   handleSendViaWebmail('gmail', currentContent);
                  }}
-                 className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
+                 className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] hover:border-red-500/40 text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
+                 title="Copia o design formatado do e-mail e abre o Gmail para colar"
                >
-                  <Mail className="h-3 w-3 text-orange-400" /> Enviar E-mail
+                  <Mail className="h-3 w-3 text-red-500" /> Enviar c/ Gmail
+               </button>
+
+               <button 
+                 onClick={() => {
+                   const currentContent = document.getElementById('editable-document-body')?.innerHTML || finalContent;
+                   handleSendViaWebmail('yahoo', currentContent);
+                 }}
+                 className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] hover:border-purple-500/40 text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
+                 title="Copia o design formatado do e-mail e abre o Yahoo Mail para colar"
+               >
+                  <Mail className="h-3 w-3 text-purple-400" /> Enviar c/ Yahoo
                </button>
      
                 <button 
@@ -695,70 +866,47 @@ function GenerateView({ store }: { store: any }) {
                     iframe.style.height = '0';
                     iframe.style.border = '0';
                     document.body.appendChild(iframe);
+                    
                     const doc = iframe.contentWindow?.document;
                     if (doc) {
-                      const isHtml = template?.format === 'html';
-                      const printContent = isHtml ? finalContent : `<pre style="white-space: pre-wrap; font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; text-align: justify;">${finalContent}</pre>`;
+                      const printContent = document.getElementById('editable-document-body')?.innerHTML || finalContent;
+                      const isHtml = localFormat === 'html';
                       
                       doc.write(`
                         <html>
                           <head>
                             <title>${template?.name || 'Documento'}</title>
                             <style>
-                              @page { margin: 2.5cm; }
+                              @page { margin: 15mm; }
                               body { 
-                                font-family: 'Times New Roman', Times, serif; 
-                                margin: 0; 
-                                font-size: 12pt; 
-                                line-height: 1.6; 
-                                color: #000;
-                                background: white;
-                              }
-                              h1, h2, h3 { text-align: center; }
-                              pre { 
-                                white-space: pre-wrap; 
-                                word-wrap: break-word; 
-                                font-family: inherit; 
-                                margin: 0;
-                              }
-                              .prose { width: 100%; }
-                              .prose table { width: 100%; border-collapse: collapse; }
-                              .prose td, .prose th { border: 1px solid #ddd; padding: 8px; }
-                              
-                              /* Estilo para assinaturas na impressão */
-                              .sig-container {
-                                margin-top: 60px;
-                                display: flex;
-                                flex-wrap: wrap;
-                                justify-content: space-around;
-                                width: 100%;
-                                page-break-inside: avoid;
-                              }
-                              .sig-box {
-                                text-align: center;
-                                padding: 20px;
-                                flex: 1;
-                                min-width: 250px;
-                              }
-                              .sig-line {
-                                border: 0;
-                                border-top: 1px solid #000;
-                                width: 80%;
-                                margin: 0 auto 10px auto;
+                                background: white !important; 
+                                color: black !important; 
+                                -webkit-print-color-adjust: exact; 
+                                print-color-adjust: exact; 
                               }
                             </style>
                           </head>
-                          <body>
-                            <div class="prose">${printContent}</div>
+                          <body class="bg-white text-black">
+                            <div class="${isHtml ? "max-w-none" : "font-serif text-sm leading-8 whitespace-pre-wrap antialiased"}">
+                              ${printContent}
+                            </div>
                           </body>
                         </html>
                       `);
+                      
+                      // Copia todos os estilos do projeto para dentro do iframe para printar igualzinho
+                      const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
+                      styles.forEach(style => {
+                        doc.head.appendChild(style.cloneNode(true));
+                      });
+                      
                       doc.close();
+                      
                       setTimeout(() => {
                         iframe.contentWindow?.focus();
                         iframe.contentWindow?.print();
                         setTimeout(() => document.body.removeChild(iframe), 1000);
-                      }, 400);
+                      }, 500);
                     }
                   }}
                   className="flex-1 min-w-[120px] px-3 py-2 bg-[#1a1a1a] border border-[#222222] text-white font-bold rounded-xl hover:bg-[#222222] transition flex items-center justify-center gap-2 text-xs"
@@ -808,10 +956,10 @@ function GenerateView({ store }: { store: any }) {
              </div>
           </div>
 
-          <div id="pdf-container" className="flex-1 overflow-y-auto p-12 bg-white text-black min-h-0 select-text selection:bg-blue-100">
+          <div id="pdf-container" className="flex-1 overflow-y-auto p-12 bg-white text-black min-h-0 select-text selection:bg-[#39FF14] selection:text-black">
              <div 
                id="editable-document-body"
-               className={cn("outline-none max-w-none transition-all min-h-full relative text-black bg-white", template?.format === 'html' ? "prose prose-sm" : "font-serif text-sm leading-8 whitespace-pre-wrap antialiased")}
+               className={cn("outline-none transition-all min-h-full relative text-black bg-white", localFormat === 'html' ? "" : "font-serif text-sm leading-8 whitespace-pre-wrap antialiased")}
                contentEditable 
                suppressContentEditableWarning
                onBlur={(e) => setFinalContent(e.currentTarget.innerHTML)}
@@ -827,6 +975,56 @@ function GenerateView({ store }: { store: any }) {
           </div>
         </div>
       </div>
+
+      {showBatchModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#050505] border border-[#1a1a1a] rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+            <h3 className="text-white font-bold text-lg mb-2">Preenchimento Automático em Lote</h3>
+            <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+              Cole abaixo uma lista de dados (Copie do Excel, CSV ou envie um texto simples).
+              A IA tentará identificar os dados e gerar múltiplas cópias do modelo atual ({template?.name}), uma para cada linha/registro.
+            </p>
+            <div className="mb-4">
+              <label className="text-[10px] font-bold text-[#39FF14] mb-2 block uppercase tracking-wide">
+                Campos detectados no modelo atual para preencher:
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {detected.map(vr => (
+                  <span key={vr} className="px-2 py-1 bg-[#39FF14]/10 text-[#39FF14] border border-[#39FF14]/30 rounded text-xs font-mono">
+                    {vr}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <textarea
+              className="w-full h-40 bg-[#0a0a0a] border border-[#222] rounded-xl text-xs font-mono text-gray-300 p-3 focus:border-[#39FF14] focus:ring-1 focus:ring-[#39FF14] outline-none resize-none mb-4"
+              placeholder={`Exemplo de conteúdo:\nJoão Silva, 111.222.333-44, 10/10/2023\nMaria Souza, 555.666.777-88, 11/10/2023\nOU copie e cole direto de uma planilha...`}
+              value={batchText}
+              onChange={(e) => setBatchText(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowBatchModal(false)}
+                className="px-4 py-2 border border-[#333] hover:bg-[#111] text-gray-400 rounded-lg text-sm font-bold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleBatchGenerate}
+                disabled={activeActions['isBatching'] || !batchText.trim()}
+                className="px-4 py-2 bg-[#39FF14] text-black rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#32e612] disabled:opacity-50 transition-colors"
+                title="A IA usará seus dados para gerar novos documentos baseados no modelo atual e os salvará automaticamente."
+              >
+                {activeActions['isBatching'] ? (
+                  <><Clock className="animate-spin h-4 w-4" /> Gerando Documentos...</>
+                ) : (
+                  <><Wand2 className="h-4 w-4" /> Gerar Lote Agora</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSignatureModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1038,7 +1236,7 @@ function TemplatesView({ store }: { store: any }) {
                  <label className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-2 block flex-shrink-0">Preview</label>
                  <div className="flex-1 w-full bg-white rounded-2xl p-8 overflow-y-auto border border-gray-200">
                     {editing.format === 'html' ? (
-                       <div dangerouslySetInnerHTML={{ __html: editing.content }} className="prose prose-sm max-w-none text-black" />
+                       <div dangerouslySetInnerHTML={{ __html: editing.content }} className="max-w-none text-black" />
                     ) : (
                       <pre className="text-black font-serif text-sm leading-7 whitespace-pre-wrap">{editing.content}</pre>
                     )}
@@ -1061,14 +1259,98 @@ function TemplatesView({ store }: { store: any }) {
 function HistoryView({ store }: { store: any }) {
   const [selected, setSelected] = useState<GeneratedDocument | null>(null);
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportAllZip = async () => {
+    if (store.documents.length === 0) return alert("Nenhum documento para exportar.");
+    setIsExporting(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const { toJpeg } = await import('html-to-image');
+      const { jsPDF } = await import('jspdf');
+      const zip = new JSZip();
+      
+      for (let i = 0; i < store.documents.length; i++) {
+        const d = store.documents[i];
+        const safeName = d.templateName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        
+        const container = document.createElement('div');
+        container.style.backgroundColor = "#ffffff";
+        container.style.color = "#000000";
+        container.style.width = "794px"; // A4 width at 96 DPI
+        container.style.minHeight = "1123px"; // A4 height at 96 DPI
+        container.style.padding = "48px 48px";
+        container.style.boxSizing = "border-box";
+        container.style.position = "fixed"; 
+        container.style.top = "0px";
+        container.style.left = "0px";
+        container.style.zIndex = "-9999";
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+        container.style.alignItems = "flex-start";
+        container.style.justifyContent = "flex-start";
+        
+        const extraClasses = d.format === 'html' ? '' : 'font-serif text-[15px] leading-8 whitespace-pre-wrap antialiased';
+        container.innerHTML = `<div class="${extraClasses}" style="color: black; background-color: transparent; width: 100%; text-align: justify; margin: 0; padding: 0;">${d.finalContent}</div>`;
+        document.body.appendChild(container);
+
+        try {
+          await new Promise(r => setTimeout(r, 200));
+          
+          // Workaround for blank images - render twice
+          await toJpeg(container, { quality: 0.1, backgroundColor: '#ffffff' }).catch(() => {});
+          
+          const dataUrl = await toJpeg(container, { cacheBust: true, pixelRatio: 2, backgroundColor: '#ffffff' });
+          const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+          
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (container.offsetHeight * pdfWidth) / container.offsetWidth;
+
+          pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+          const pdfBlob = pdf.output('blob');
+          zip.file(`${String(i + 1).padStart(3, '0')}_${safeName}.pdf`, pdfBlob);
+        } catch(e) {
+          console.error("Erro gerando PDF:", e);
+        } finally {
+          document.body.removeChild(container);
+        }
+      }
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Lote_Documentos_${new Date().toISOString().split('T')[0]}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Erro ao exportar ZIP: " + err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="flex flex-row h-full gap-8">
        <div className={cn(
          "w-80 bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl flex flex-col overflow-hidden shrink-0",
          
        )}>
-          <div className="p-6 border-b border-[#1a1a1a]">
+          <div className="p-6 border-b border-[#1a1a1a] flex flex-col gap-3">
              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Documentos Gerados</h2>
+             {store.documents.length > 0 && (
+               <button 
+                 onClick={handleExportAllZip}
+                 disabled={isExporting}
+                 className="w-full py-2 bg-[#1a1a1a] border border-[#333] hover:bg-[#222] disabled:opacity-50 text-[#39FF14] text-[10px] font-bold uppercase rounded-lg transition-colors flex justify-center items-center gap-2 tracking-widest"
+               >
+                 {isExporting ? (
+                   <><Clock className="animate-spin h-3.5 w-3.5" /> Gerando PDFs...</>
+                 ) : (
+                   <><DownloadCloud className="h-3.5 w-3.5" /> Baixar Lote em PDF (ZIP)</>
+                 )}
+               </button>
+             )}
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-2 ">
              {store.documents.map((d: any) => (
@@ -1104,14 +1386,69 @@ function HistoryView({ store }: { store: any }) {
                     </div>
                  </div>
                  <div className="flex gap-2">
-                    <button onClick={() => window.print()} className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-[#39FF14] transition-colors"><Printer className="h-4 w-4 h-5 w-5" /></button>
+                    <button onClick={() => {
+                        const iframe = document.createElement('iframe');
+                        iframe.style.position = 'fixed';
+                        iframe.style.right = '0';
+                        iframe.style.bottom = '0';
+                        iframe.style.width = '0';
+                        iframe.style.height = '0';
+                        iframe.style.border = '0';
+                        document.body.appendChild(iframe);
+                        
+                        const doc = iframe.contentWindow?.document;
+                        if (doc) {
+                          const isHtml = selected.format === 'html';
+                          doc.write(`
+                            <html>
+                              <head>
+                                <title>${selected.templateName || 'Documento'}</title>
+                                <style>
+                                  @page { margin: 15mm; }
+                                  body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                                </style>
+                              </head>
+                              <body class="bg-white text-black">
+                                <div class="${isHtml ? "max-w-none" : "font-serif text-sm leading-8 whitespace-pre-wrap antialiased"}">
+                                  ${selected.finalContent}
+                                </div>
+                              </body>
+                            </html>
+                          `);
+                          
+                          const styles = document.querySelectorAll('style, link[rel="stylesheet"]');
+                          styles.forEach(style => doc.head.appendChild(style.cloneNode(true)));
+                          
+                          doc.close();
+                          
+                          setTimeout(() => {
+                            iframe.contentWindow?.focus();
+                            iframe.contentWindow?.print();
+                            setTimeout(() => document.body.removeChild(iframe), 1000);
+                          }, 500);
+                        }
+                    }} className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-[#39FF14] transition-colors"><Printer className="h-4 w-4 h-5 w-5" /></button>
                     <button onClick={() => { store.deleteDocument(selected.id); setSelected(null); }} className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4 h-5 w-5" /></button>
+                     <button 
+                       onClick={() => handleSendViaWebmail('gmail', selected.finalContent)} 
+                       className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1 text-xs font-bold"
+                       title="Enviar via Gmail (Copiar Design)"
+                     >
+                       <Mail className="h-4 w-4 h-5 w-5 text-red-500" /> <span className="hidden sm:inline">Gmail</span>
+                     </button>
+                     <button 
+                       onClick={() => handleSendViaWebmail('yahoo', selected.finalContent)} 
+                       className="p-2 bg-[#1a1a1a] rounded-lg text-gray-400 hover:text-purple-400 transition-colors flex items-center gap-1 text-xs font-bold"
+                       title="Enviar via Yahoo Mail (Copiar Design)"
+                     >
+                       <Mail className="h-4 w-4 h-5 w-5 text-purple-400" /> <span className="hidden sm:inline">Yahoo</span>
+                     </button>
                  </div>
               </div>
               <div className="flex-1 p-6 p-16 overflow-y-auto text-black select-text">
                 <div className="max-w-2xl mx-auto">
                     {selected.format === 'html' ? (
-                       <div dangerouslySetInnerHTML={{ __html: selected.finalContent }} className="prose prose-sm prose-base max-w-none" />
+                       <div dangerouslySetInnerHTML={{ __html: selected.finalContent }} className="max-w-none text-black" />
                     ) : (
                       <pre className="font-serif text-sm text-base leading-relaxed leading-8 whitespace-pre-wrap">{selected.finalContent}</pre>
                     )}
@@ -1130,176 +1467,47 @@ function HistoryView({ store }: { store: any }) {
 }
 
 function SettingsView({ store }: { store: any }) {
-  const [smtpLogs, setSmtpLogs] = useState<any[]>([]);
-  const [isEditingPass, setIsEditingPass] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/logs')
-      .then(r => r.json())
-      .then(data => setSmtpLogs(Array.isArray(data) ? data : []))
-      .catch(() => setSmtpLogs([]));
-  }, []);
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Preferências DocuMestre</h1>
+        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Preferências Hack Document</h1>
         <p className="text-gray-500 font-mono text-sm uppercase tracking-widest">Security & API Infrastructure</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         <div className="space-y-8">
           <section className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8">
             <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-              <Mail className="h-4 w-4 text-[#39FF14]" /> Servidor SMTP (Outbound)
+              <Sparkles className="h-4 w-4 text-purple-400" /> Google Gen AI (LLM)
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-mono text-gray-500 uppercase mb-2">Provedor de E-mail</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'gmail', label: 'Gmail', desc: 'smtp.gmail.com' },
-                    { id: 'yahoo', label: 'Yahoo Mail', desc: 'smtp.mail.yahoo.com' },
-                    { id: 'outlook', label: 'Outlook / Hotmail', desc: 'smtp.office365.com' },
-                    { id: 'other', label: 'Outro (Personalizado)', desc: 'Reconhecimento Auto' }
-                  ].map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => store.setSmtpProvider(p.id)}
-                      className={cn(
-                        "p-3 rounded-xl border flex flex-col items-start transition-all text-left",
-                        store.smtpProvider === p.id 
-                          ? "bg-[#39FF14]/10 border-[#39FF14] text-white shadow-[0_0_10px_-3px_rgba(57,255,20,0.3)]" 
-                          : "bg-[#050505] border-[#1a1a1a] hover:border-[#333] text-gray-400 hover:text-white"
-                      )}
-                    >
-                      <span className="text-xs font-bold leading-none">{p.label}</span>
-                      <span className="text-[8px] font-mono mt-1 opacity-60 uppercase tracking-tight">{p.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono text-gray-500 uppercase mb-2">E-mail Remetente</label>
-                <input 
-                  type="email"
-                  className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] outline-none transition-all"
-                  placeholder="exemplo@gmail.com"
-                  value={store.smtpUser}
-                  onChange={e => store.setSmtpUser(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono text-gray-500 uppercase mb-2">Senha App / Token</label>
-                {(isEditingPass || !store.smtpPass) ? (
-                  <div className="flex gap-2">
-                    <input 
-                      type="password"
-                      className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-[#39FF14] outline-none transition-all"
-                      placeholder="••••••••••••••••"
-                      value={store.smtpPass}
-                      onChange={e => store.setSmtpPass(e.target.value)}
-                    />
-                    {store.smtpPass && (
-                      <button 
-                        onClick={() => setIsEditingPass(false)}
-                        className="px-4 bg-[#39FF14] text-black font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#32e612] transition-colors whitespace-nowrap"
-                      >
-                        Salvar
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input 
-                      type="password"
-                      className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm text-gray-500 outline-none cursor-not-allowed"
-                      value="••••••••••••••••"
-                      disabled
-                    />
-                    <button 
-                      onClick={() => setIsEditingPass(true)}
-                      className="px-4 bg-[#1a1a1a] text-white font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-[#222] transition-colors whitespace-nowrap"
-                    >
-                      Trocar Senha
-                    </button>
-                  </div>
-                )}
-                <p className="text-[10px] text-gray-600 mt-2 italic px-1">Obs: Para Gmail ou Yahoo, utilize uma "Senha de Aplicativo".</p>
-              </div>
-
-              <div className="pt-4 border-t border-[#1a1a1a] flex items-center justify-between">
-                <div>
-                  <label className="block text-[10px] font-mono text-white uppercase font-bold tracking-widest mb-1">
-                    Salvar na Memória (Permanente)
-                  </label>
-                  <p className="text-[9px] text-gray-500 leading-normal max-w-[210px]">
-                    Se ativado, suas credenciais de e-mail e senha ficam guardadas no dispositivo. Se desativado, elas expiram ao final da sessão.
-                  </p>
-                </div>
-                <button
-                  onClick={() => store.setSaveSmtp(!store.saveSmtp)}
-                  className={cn(
-                    "w-12 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none flex items-center shrink-0",
-                    store.saveSmtp ? "bg-[#39FF14]" : "bg-gray-800"
-                  )}
-                >
-                  <motion.div
-                    layout
-                    className={cn(
-                      "w-4 h-4 rounded-full shadow-md bg-white transition-transform duration-200",
-                      store.saveSmtp ? "translate-x-6" : "translate-x-0"
-                    )}
+                <label className="block text-[10px] font-mono text-gray-500 uppercase mb-2">Gemini API Key</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="password"
+                    className="w-full bg-[#050505] border border-[#1a1a1a] rounded-xl p-4 text-sm focus:border-purple-400 outline-none transition-all"
+                    placeholder="AIzaSy..."
+                    value={store.geminiKey}
+                    onChange={e => store.setGeminiKey(e.target.value)}
                   />
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8">
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-[#39FF14]" /> Operação 100% Offline
-            </h3>
-            <div className="space-y-4">
-              <div className="p-4 bg-[#39FF14]/5 border border-[#39FF14]/20 rounded-xl">
-                 <p className="text-[10px] text-[#39FF14] leading-relaxed uppercase tracking-tighter font-bold mb-2">
-                   PRIVACIDADE GARANTIDA
-                 </p>
-                 <p className="text-[10px] text-gray-500 leading-relaxed uppercase tracking-tighter">
-                   Nenhum dado é enviado para APIs externas. Este sistema roda em ambiente isolado 
-                   usando apenas os recursos do seu computador (JSON/Local Storage). Independente e Seguro.
-                 </p>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-8">
-          <section className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-8 h-full flex flex-col">
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-orange-400" /> Logs de Comunicação
-            </h3>
-            <div className="flex-1 overflow-y-auto space-y-3">
-              {(smtpLogs || []).map(log => (
-                <div key={log.id} className="p-4 bg-[#050505] border border-[#1a1a1a] rounded-xl flex flex-col gap-1">
-                   <div className="flex justify-between items-center">
-                     <span className="text-[10px] font-bold text-gray-200 truncate pr-4">{log.to}</span>
-                     <span className={cn(
-                       "text-[8px] px-1.5 py-0.5 rounded font-bold uppercase",
-                       log.status === 'Sucesso' ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
-                     )}>
-                       {log.status === 'Sucesso' ? 'OK' : 'FAIL'}
-                     </span>
-                   </div>
-                   <p className="text-[9px] text-gray-500 font-mono italic">{log.subject}</p>
-                   <p className="text-[8px] text-gray-600 mt-1 uppercase tracking-widest">{log.timestamp}</p>
+                  <button 
+                    onClick={() => {
+                        window.alert('Chave API salva! O assistente de IA Gemini já está ativo para uso.');
+                    }}
+                    className="px-4 bg-purple-500 text-black font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-purple-400 transition-colors whitespace-nowrap cursor-pointer"
+                  >
+                    Salvar API
+                  </button>
                 </div>
-              ))}
-              {(!smtpLogs || smtpLogs.length === 0) && (
-                <div className="text-center py-12 text-gray-700 font-mono text-xs">Sem logs disponíveis.</div>
-              )}
+                <div className="mt-3 flex items-center justify-between px-1">
+                  <p className="text-[10px] text-gray-600 italic">Necessário para gerar documentos e preenchimento dinâmico com IA.</p>
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[10px] text-purple-400 font-bold hover:underline tracking-wider uppercase flex items-center gap-1">
+                    Pegar Chave <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
             </div>
           </section>
         </div>
@@ -1356,5 +1564,220 @@ function StatCard({ icon, label, value, color }: { icon: any, label: string, val
   );
 }
 
+function CreationView({ store }: { store: any }) {
+  const [tema, setTema] = useState('');
+  const [cor1, setCor1] = useState('');
+  const [cor2, setCor2] = useState('');
+  const [estilo, setEstilo] = useState('clássico');
+  const [cabecalho, setCabecalho] = useState('');
+  const [mensagem, setMensagem] = useState('');
+  const [rodape, setRodape] = useState('');
+  const [botao, setBotao] = useState('');
+  const [link, setLink] = useState('');
 
+  const [generatedHtml, setGeneratedHtml] = useState('');
+  const [templateName, setTemplateName] = useState('');
 
+  const generatePrompt = () => {
+    return `crie um email decorado profissional com imagens, detalhes, como uma corporação merece, esse email tera o tema "${tema}" que eu quero nas cores "${cor1}" e "${cor2}" esse email tambem no estilo "${estilo}" e como os seguintes dados no cabeçalho "${cabecalho}" e os seguintes dados no rodape "${rodape}" que terá apenas um botao escrito "${botao}" direcionando para o link "${link}" e esse email no código sera criado assim <a href="${link}">${botao}</a> ou <p>${mensagem}</p>. Retorne apenas o código do e-mail em HTML.`;
+  };
+
+  const currentPrompt = generatePrompt();
+
+  const handleCopyAndGo = (url: string) => {
+    navigator.clipboard.writeText(currentPrompt);
+    alert("Prompt copiado para a área de transferência! Cole na janela da inteligência artificial.");
+    window.open(url, '_blank');
+  };
+
+  const saveAsTemplate = () => {
+    if (!generatedHtml) {
+      alert("Cole o HTML retornado pela IA antes de salvar!");
+      return;
+    }
+    const name = templateName || `Email - ${tema || 'Novo'}`;
+    store.addTemplate({
+      id: generateId(),
+      name,
+      content: generatedHtml,
+      format: 'html',
+      type: 'email'
+    });
+    setTemplateName('');
+    setGeneratedHtml('');
+    alert("Salvo como template!");
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto flex flex-col gap-8 pb-12 h-screen overflow-y-auto pr-2 no-scrollbar">
+      <div className="mb-2">
+        <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+          <Brush className="text-[#39FF14]" /> Ferramentas de Criação
+        </h2>
+        <p className="text-sm text-gray-500 max-w-2xl">
+          Preencha as variáveis abaixo para gerar um prompt mestre de criação de e-mail incrível. 
+          Use os botões para abri-lo em uma Inteligência Artificial, depois cole o resultado aqui e salve no sistema.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Form */}
+        <div className="bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a] p-6 shadow-xl space-y-4">
+          <h3 className="text-sm font-bold text-white border-b border-[#222] pb-3 mb-4 uppercase tracking-wider">
+            Variáveis do Email
+          </h3>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Tema do email</label>
+              <input type="text" className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={tema} onChange={(e) => setTema(e.target.value)} placeholder="Ex: Divulgação de Lançamento" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Cor 1 (Principal)</label>
+                <input type="text" className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={cor1} onChange={(e) => setCor1(e.target.value)} placeholder="Ex: Preto / Azul Marinho" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Cor 2 (Secundária)</label>
+                <input type="text" className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={cor2} onChange={(e) => setCor2(e.target.value)} placeholder="Ex: Dourado / Verde Neon" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Estilo</label>
+              <select className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={estilo} onChange={(e) => setEstilo(e.target.value)}>
+                <option value="clássico">Clássico</option>
+                <option value="casual">Casual</option>
+                <option value="elegante">Elegante</option>
+                <option value="futurista">Futurista</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Dados do Cabeçalho</label>
+              <input type="text" className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={cabecalho} onChange={(e) => setCabecalho(e.target.value)} placeholder="Ex: Logo da Empresa, Título Principal" />
+            </div>
+
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Mensagem (Corpo)</label>
+              <textarea className="w-full h-16 bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition resize-none" value={mensagem} onChange={(e) => setMensagem(e.target.value)} placeholder="Ex: Estamos lançando o nosso novo produto..." />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Texto do Botão</label>
+                <input type="text" className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={botao} onChange={(e) => setBotao(e.target.value)} placeholder="Ex: Clique Aqui" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">URL (Link)</label>
+                <input type="text" className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={link} onChange={(e) => setLink(e.target.value)} placeholder="Ex: https://..." />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Dados do Rodapé</label>
+              <input type="text" className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" value={rodape} onChange={(e) => setRodape(e.target.value)} placeholder="Ex: Todos direitos reservados, Redes Sociais" />
+            </div>
+          </div>
+        </div>
+
+        {/* Output area */}
+        <div className="flex flex-col gap-6">
+          <div className="bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a] p-6 shadow-xl flex-1 flex flex-col min-h-0">
+            <h3 className="text-sm font-bold text-white border-b border-[#222] pb-3 mb-4 flex items-center justify-between">
+              <span>Prompt Gerado</span>
+              <button title="Copiar" onClick={() => { navigator.clipboard.writeText(currentPrompt); alert('Copiado!'); }} className="text-[#39FF14] hover:underline flex items-center gap-1 text-xs">
+                <Copy className="h-4 w-4" /> Copiar 
+              </button>
+            </h3>
+            
+            <div className="bg-[#111] border border-[#222] rounded-lg p-3 text-xs text-gray-300 flex-1 overflow-y-auto mb-4 whitespace-pre-wrap font-mono leading-relaxed min-h-[120px]">
+              {currentPrompt}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-auto">
+              <button onClick={() => handleCopyAndGo('https://chat.deepseek.com')} className="py-2.5 bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-[#333] rounded-xl text-white font-bold text-xs transition-colors flex items-center justify-center gap-2">
+                DeepSeek <ExternalLink className="h-3 w-3" />
+              </button>
+              <button onClick={() => handleCopyAndGo('https://kimi.moonshot.cn')} className="py-2.5 bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-[#333] rounded-xl text-white font-bold text-xs transition-colors flex items-center justify-center gap-2">
+                Kimi <ExternalLink className="h-3 w-3" />
+              </button>
+              <button onClick={() => handleCopyAndGo('https://chatgpt.com')} className="py-2.5 bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-[#333] rounded-xl text-white font-bold text-xs transition-colors flex items-center justify-center gap-2">
+                ChatGPT <ExternalLink className="h-3 w-3" />
+              </button>
+              <button onClick={() => handleCopyAndGo('https://gemini.google.com')} className="py-2.5 bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-[#333] rounded-xl text-white font-bold text-xs transition-colors flex items-center justify-center gap-2">
+                Gemini <ExternalLink className="h-3 w-3" />
+              </button>
+              <button onClick={() => handleCopyAndGo('https://copilot.microsoft.com')} className="py-2.5 sm:col-span-2 md:col-span-1 bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-[#333] rounded-xl text-white font-bold text-xs transition-colors flex items-center justify-center gap-2">
+                Copilot <ExternalLink className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[#0a0a0a] rounded-2xl border border-[#1a1a1a] p-6 shadow-xl mt-4 w-full">
+        <h3 className="text-sm font-bold text-white border-b border-[#222] pb-3 mb-4 flex items-center gap-2 uppercase tracking-wider">
+          <Save className="h-4 w-4 text-[#39FF14]" /> Importar Template
+        </h3>
+        
+        <p className="text-xs text-gray-400 mb-4">
+          Após a IA criar o código do seu E-mail, cole-o aqui para salvar imediatamente como um Template do sistema.
+        </p>
+
+        <div className="flex flex-col md:flex-row gap-6">
+          <textarea 
+            className="w-full flex-1 h-32 bg-[#111] border border-[#222] rounded-lg p-3 text-sm text-gray-300 font-mono focus:border-[#39FF14] outline-none transition resize-none" 
+            value={generatedHtml} 
+            onChange={(e) => setGeneratedHtml(e.target.value)} 
+            placeholder="Cole o código HTML fornecido pela inteligência artificial aqui..." 
+          />
+          <div className="flex flex-col gap-3 md:w-64">
+            <input 
+              type="text" 
+              className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:border-[#39FF14] outline-none transition" 
+              value={templateName} 
+              onChange={(e) => setTemplateName(e.target.value)} 
+              placeholder="Nome do Template" 
+            />
+            <button 
+              onClick={saveAsTemplate}
+              className="w-full py-2.5 px-6 bg-[#222] hover:bg-[#333] border border-[#39FF14]/50 rounded-xl text-[#39FF14] font-bold text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Salvar no Sistema
+            </button>
+            <div className="border-t border-[#222] pt-3 mt-1 flex flex-col gap-2">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">Visualização e Teste Rápido:</span>
+              <button 
+                onClick={() => {
+                  if (!generatedHtml) {
+                    alert("Por favor, cole o código HTML criado pela IA na caixa de texto primeiro para testar!");
+                    return;
+                  }
+                  handleSendViaWebmail('gmail', generatedHtml);
+                }}
+                className="w-full py-2 px-4 bg-[#111] hover:bg-[#1a1a1a] border border-[#222] hover:border-red-500/40 rounded-lg text-xs text-gray-300 hover:text-white font-bold transition flex items-center justify-center gap-2"
+              >
+                <Mail className="h-3.5 w-3.5 text-red-500" /> Testar no Gmail
+              </button>
+              <button 
+                onClick={() => {
+                  if (!generatedHtml) {
+                    alert("Por favor, cole o código HTML criado pela IA na caixa de texto primeiro para testar!");
+                    return;
+                  }
+                  handleSendViaWebmail('yahoo', generatedHtml);
+                }}
+                className="w-full py-2 px-4 bg-[#111] hover:bg-[#1a1a1a] border border-[#222] hover:border-purple-500/40 rounded-lg text-xs text-gray-300 hover:text-white font-bold transition flex items-center justify-center gap-2"
+              >
+                <Mail className="h-3.5 w-3.5 text-purple-400" /> Testar no Yahoo
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
