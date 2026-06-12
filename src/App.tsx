@@ -247,7 +247,10 @@ function GenerateView({ store }: { store: any }) {
   const [finalContent, setFinalContent] = useState('');
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [signatures, setSignatures] = useState([{ name: '', role: '' }]);
-  const template = store.templates.find((t: any) => t.id === selectedId);
+  const [unsavedTemplate, setUnsavedTemplate] = useState<Template | null>(null);
+  const template = (unsavedTemplate && unsavedTemplate.id === selectedId) 
+    ? unsavedTemplate 
+    : store.templates.find((t: any) => t.id === selectedId);
   const detected = template ? extractVariables(template.content) : [];
   
   const [localFormat, setLocalFormat] = useState<'html' | 'text'>('html');
@@ -353,7 +356,7 @@ function GenerateView({ store }: { store: any }) {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
-          await store.addTemplate(newTmpl);
+          setUnsavedTemplate(newTmpl);
           setSelectedId(newId);
           setVars({});
           setLeftTab('fill');
@@ -428,7 +431,7 @@ function GenerateView({ store }: { store: any }) {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-        await store.addTemplate(newTmpl);
+        setUnsavedTemplate(newTmpl);
         setSelectedId(newId);
         setVars({});
         setAiPrompt('');
@@ -568,6 +571,11 @@ function GenerateView({ store }: { store: any }) {
               {store.templates.map((t: any) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
+              {unsavedTemplate && (
+                <option key={unsavedTemplate.id} value={unsavedTemplate.id}>
+                  {unsavedTemplate.name} (Não Salvo)
+                </option>
+              )}
             </select>
           </div>
           
@@ -600,6 +608,7 @@ function GenerateView({ store }: { store: any }) {
                     updatedAt: new Date().toISOString()
                   };
                   store.addTemplate(newTmpl);
+                  setUnsavedTemplate(null);
                   setSelectedId(newTmpl.id);
                   alert("🎉 Modelo Salvo com Sucesso! \nEle já está selecionado e disponível na aba Meus Modelos.");
                }

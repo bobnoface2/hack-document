@@ -370,16 +370,17 @@ Siga as diretrizes:
 
       const ai = await getGeminiClient();
       const prompt = `ATUE COMO UMA MÁQUINA DE XEROX (FOTOCOPIADORA) INTELIGENTE.
-Sua única função é "escanear" a imagem fornecida e recriar EXATAMENTE O MESMO DOCUMENTO em HTML com Tailwind CSS. 
-Regras:
-1. OBRIGAÇÃO MÁXIMA E ABSOLUTA CÓPIA FIEL: O documento gerado DEVE SER UMA CÓPIA 100% FIEL E IDÊNTICA AO ORIGINAL. Não modifique absolutamente nada no texto, na ordem ou na estrutura.
-2. TABELAS E GRADES: Se houver uma tabela (ex: folha de ponto, relatórios), recrie EXATAMENTE o número de linhas e colunas. USE BORDAS CORRETAMENTE (border, border-black, border-collapse, etc.). Coloque TODAS as linhas verticais (border-l, border-r, divide-x) e horizontais (border-t, border-b, divide-y) que estiverem presentes e visíveis na foto. NÃO ignore linhas internas ou de separação.
-3. ABSOLUTAMENTE TODOS OS DADOS ESPECÍFICOS E PREENCHIDOS DEVEM VIRAR VARIÁVEIS! Isso inclui CPFs, Nomes, Valores, datas, horários, horas trabalhadas, números, etc. Substitua-os pelo formato de chaves {{nome_da_variavel}}.
-4. REGRA CRUCIAL DE CAMPOS VAZIOS: Se um campo (ou célula da tabela) estiver vazio, em branco ou tiver apenas linha pontilhada/sublinhado/espaço em branco, DEIXE EM BRANCO. NÃO invente variáveis para espaços vazios, NÃO insira "-" ou "___", NÃO preencha células vazias! Apenas mantenha a estrutura da célula em branco.
-5. Para campos de assinatura, crie apenas uma linha simples com o texto embaixo (ex: <div class="text-center mt-8"><div class="border-t border-black w-48 mx-auto mb-2"></div><p>Assinatura</p></div>).
-6. O layout DEVE CABER EM UMA ÚNICA PÁGINA A4. Use classes compactas (text-[10px], text-xs, py-1) e evite gap/margin excessivo.
-7. Retorne apenas JSON com as propriedades "name" (um titulo limpo) e "content" (todo HTML criado). Sem tags markdown \`\`\`json ou \`\`\`html.
-8. VOCÊ DEVE SER EXATAMENTE DETERMINÍSTICO. NUNCA INVENTE DADOS que não estão explicitamente visíveis na imagem.`;
+Sua única função é escanear a imagem fornecida e recriar o documento idêntico ao original em HTML com Tailwind CSS.
+
+Regras de Cópia Fiel (Xerox):
+1. CÓPIA FIEL: O documento gerado deve ser uma cópia 100% fiel e idêntica ao original. Não altere os textos, títulos, rodapés ou estrutura de nenhuma forma.
+2. RESPEITO ABSOLUTO A LINHAS E TABELAS: Você deve respeitar rigorosamente tanto as linhas horizontais quanto as linhas verticais originais do documento. 
+   - Elementos como tabelas, divisores, grades de folha de ponto ou grades de relatórios devem ser recriados de forma idêntica.
+   - Use as bordas apropriadas do Tailwind (ex: border, border-black, border-collapse, divide-x, divide-y, etc.) para assegurar que todas as grades verticais e horizontais fiquem perfeitamente visíveis e formatadas.
+3. SEM RESPOSTAS OU TEXTOS EXTRAS: Retorne APENAS o documento solicitado e estruturado. Não adicione nenhum tipo de nota, explicação, introdução, aviso de IA ou texto extra no documento. O documento final deve parecer um documento real, limpo de qualquer metadado do prompt.
+4. GERAÇÃO DE VARIÁVEIS: Identifique dados variáveis específicos já preenchidos no documento original (ex: nomes de pessoas, CPFs, datas específicas, valores monetários preenchidos, horários) e converta-os para o formato de chaves {{nome_da_variavel}}.
+5. CAMPOS VAZIOS: Se um espaço ou célula de tabela estiver sem dados, em branco ou apenas com uma linha tracejada lisa para preenchimento posterior, mantenha-a perfeitamente em branco, sem inventar texto ou variáveis desnecessárias.
+6. COMPATIBILIDADE A4: O layout completo deve ser dimensionado perfeitamente para caber em uma página A4 sem ultrapassar limites físicos, usando espaçamentos e fontes equilibradas.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -393,7 +394,7 @@ Regras:
           }
         ],
         config: {
-          systemInstruction: "VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens que recebe convertendo 100% de precisão para HTML/Tailwind. Você tem amnésia criativa: você nunca inventa texto, nunca preenche espaços em branco, e nunca altera a formatação original além de converter para Tailwind.",
+          systemInstruction: "VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens de documentos que recebe com 100% de precisão para HTML/Tailwind, respeitando todas as linhas horizontais e verticais e sem adicionar nenhum texto extra.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,

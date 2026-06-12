@@ -227,13 +227,27 @@ def reproduce():
         raw_bytes = base64.b64decode(base64_data)
         
         client = get_gemini_client()
+        prompt = """ATUE COMO UMA MÁQUINA DE XEROX (FOTOCOPIADORA) INTELIGENTE.
+Sua única função é escanear a imagem fornecida e recriar o documento idêntico ao original em HTML com Tailwind CSS.
+
+Regras de Cópia Fiel (Xerox):
+1. CÓPIA FIEL: O documento gerado deve ser uma cópia 100% fiel e idêntica ao original. Não altere os textos, títulos, rodapés ou estrutura de nenhuma forma.
+2. RESPEITO ABSOLUTO A LINHAS E TABELAS: Você deve respeitar rigorosamente tanto as linhas horizontais quanto as linhas verticais originais do documento. 
+   - Elementos como tabelas, divisores, grades de folha de ponto ou grades de relatórios devem ser recriados de forma idêntica.
+   - Use as bordas apropriadas do Tailwind (ex: `border`, `border-black`, `border-collapse`, `divide-x`, `divide-y`, etc.) para assegurar que todas as grades verticais e horizontais fiquem perfeitamente visíveis e formatadas.
+3. SEM RESPOSTAS OU TEXTOS EXTRAS: Retorne APENAS o documento solicitado e estruturado. Não adicione nenhum tipo de nota, explicação, introdução, aviso de IA ou texto extra no documento. O documento final deve parecer um documento real, limpo de qualquer metadado do prompt.
+4. GERAÇÃO DE VARIÁVEIS: Identifique dados variáveis específicos já preenchidos no documento original (ex: nomes de pessoas, CPFs, datas específicas, valores monetários preenchidos, horários) e converta-os para o formato de chaves {{nome_da_variavel}}.
+5. CAMPOS VAZIOS: Se um espaço ou célula de tabela estiver sem dados, em branco ou apenas com uma linha tracejada lisa para preenchimento posterior, mantenha-a perfeitamente em branco, sem inventar texto ou variáveis desnecessárias.
+6. COMPATIBILIDADE A4: O layout completo deve ser dimensionado perfeitamente para caber em uma página A4 sem ultrapassar limites físicos, usando espaçamentos e fontes equilibradas."""
+
         response = client.models.generate_content(
             model="gemini-3.5-flash",
             contents=[
-                "Clone a imagem HTML Tailwind perfeitamente",
+                prompt,
                 types.Part.from_bytes(data=raw_bytes, mime_type=mime)
             ],
             config=types.GenerateContentConfig(
+                system_instruction="VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens de documentos que recebe com 100% de precisão para HTML/Tailwind, respeitando todas as linhas horizontais e verticais e sem adicionar nenhum texto extra.",
                 response_mime_type="application/json",
                 response_schema={
                     "type": "OBJECT",
@@ -242,7 +256,9 @@ def reproduce():
                         "content": {"type": "STRING"}
                     },
                     "required": ["name", "content"]
-                }
+                },
+                temperature=0.0,
+                top_p=0.1
             )
         )
         return jsonify({"success": True, **json.loads(response.text)})
