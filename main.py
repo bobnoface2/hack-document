@@ -289,16 +289,33 @@ Regras de Cópia Fiel (Xerox):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+class AppApi:
+    def save_zip(self, base64_data, filename):
+        try:
+            import webview
+            import base64
+            window = webview.windows[0]
+            result = window.create_file_dialog(webview.SAVE_DIALOG, directory='', save_filename=filename)
+            if result and len(result) > 0:
+                with open(result[0], 'wb') as f:
+                    f.write(base64.b64decode(base64_data))
+                return {"success": True}
+            else:
+                return {"success": False, "error": "Cancelado"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
 def run_server():
     app.run(port=3000, debug=False, use_reloader=False)
 
 if __name__ == '__main__':
     try:
         import webview
+        api = AppApi()
         t = threading.Thread(target=run_server)
         t.daemon = True
         t.start()
-        webview.create_window('Hack Document', 'http://localhost:3000', width=1280, height=800)
+        webview.create_window('Hack Document', 'http://localhost:3000', width=1280, height=800, js_api=api)
         webview.start()
     except ImportError:
         print("Módulo 'pywebview' não encontrado. Rodando em modo CLI. Acesse http://localhost:3000")

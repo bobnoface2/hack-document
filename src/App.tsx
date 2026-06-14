@@ -1325,13 +1325,23 @@ function HistoryView({ store }: { store: any }) {
         }
       }
 
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Lote_Documentos_${new Date().toISOString().split('T')[0]}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const filename = `Lote_Documentos_${new Date().toISOString().split('T')[0]}.zip`;
+
+      if ((window as any).pywebview && (window as any).pywebview.api) {
+        const zipBase64 = await zip.generateAsync({ type: 'base64' });
+        const res = await (window as any).pywebview.api.save_zip(zipBase64, filename);
+        if (res && res.error && res.error !== "Cancelado") {
+           alert("Erro ao salvar usando sistema nativo: " + res.error);
+        }
+      } else {
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
     } catch (err) {
       alert("Erro ao exportar ZIP: " + err);
     } finally {
