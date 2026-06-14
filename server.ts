@@ -218,7 +218,7 @@ async function startServer() {
 Regras:
 1. Preserve todas as tags HTML originais e classes CSS Tailwind.
 2. Não altere as variáveis {{variavel}}, deixe-as intactas.
-3. Não adicione explicações de Markdown (ex: sem \`\`\`html). Retorne APENAS o HTML final corrigido ortograficamente.
+3. REGRA ABSOLUTA: É TOTALMENTE PROIBIDO gerar texto adicional, explicações, cumprimentos ou blocos markdown de código (\`\`\`html). Retorne APENAS E ESTRITAMENTE o HTML final corrigido. Nada antes, nada depois.
 
 Conteúdo:
 ${content}`;
@@ -245,7 +245,7 @@ ${content}`;
 Regras:
 1. Deixe o documento com visual profissional, organizado e fácil de ler. 
 2. Não altere o texto real ou variáveis {{variavel}}. 
-3. Retorne APENAS HTML, sem markdown de blocos de código.
+3. REGRA ABSOLUTA: É TOTALMENTE PROIBIDO gerar explicações, introduções ou usar formatação de markdown. Sua resposta deve conter ESTRITAMENTE O CÓDIGO HTML bruto modificado.
 
 Conteúdo HTML:
 ${content}`;
@@ -279,7 +279,7 @@ Para CADA registro encontrado, extraia os valores para as seguintes chaves: ${va
 Se algum campo não estiver presente ou for deduzível como vazio, deixe como string vazia "".
 A resposta DEVE ser estritamente um array JSON de objetos válidos. 
 Exemplo de formato esperado: [{"nome": "joao", "cpf": "123"}, {"nome": "maria", "cpf": "456"}]
-Nenhum texto adicional ou tags markdown, retorne a resposta OBRIGATORIAMENTE em JSON puro no formato List<Object>.`;
+REGRA ABSOLUTA: É TOTALMENTE PROIBIDO gerar qualquer texto de introdução ou conclusão. Não use tags markdown (\`\`\`json). Retorne OBRIGATORIAMENTE O JSON PURO DA ARRAY. Qualquer palavra extra quebrará o sistema.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -308,7 +308,7 @@ Exemplo: Se achar "João Silva", troque por {{nome_cliente}}. Se achar "01/05/20
 Regras MÁXIMAS de preservação:
 1. É ESTRITAMENTE PROIBIDO alterar qualquer formatação, espaçamento (margin, padding, enter, tabs), classes CSS ou estrutura HTML do documento!
 2. Retorne o documento EXATAMENTE do jeito que ele veio, mexendo APENAS nas posições exatas das palavras substituídas.
-3. Não adicione blocos invisíveis, formatações de markdown ou quebras de linhas novas. Retorne APENAS o documento processado.
+3. REGRA ABSOLUTA: PROIBIDO FORNECER QUALQUER RESPOSTA CONVERSACIONAL (como "Aqui está", "Entendido"). NUNCA use blocos markdown \`\`\`html. Sua resposta deve ser ÚNICA E EXCLUSIVAMENTE o conteúdo HTML final processado. Qualquer frase extra quebrará o sistema.
 
 Conteúdo do documento:
 ${content}`;
@@ -341,9 +341,10 @@ Siga as diretrizes:
 2. Insira classes limpas do Tailwind CSS para garantir sofisticação visual (margens, espaçamento de linha legível de cerca de 1.8x, cabeçalho sutil, negritos e seções divisórias). A cor do texto deve ser predominantemente preta ou carvão leve com fundo branco para excelente leitura ao preencher ou imprimir.
 3. Crie e posicione variáveis usando o formato de duas chaves duplas {{nome_variavel}} em todos os pontos dinâmicos que deveriam ser completados no contexto real (ex: {{data_inicio}}, {{valor_total}}, {{dados_contratado}}).
 4. O layout DEVE CABER EM UMA ÚNICA PÁGINA A4. Use classes compactas (text-xs ou text-sm, leading-tight) e reduza paddings e margens longas. A impressão não pode pular para a página 2.
-5. Forneça um título enxuto e profissional correspondente para o template.`,
+5. Forneça um título enxuto e profissional correspondente para o template.
+REGRA CRÍTICA DO SISTEMA: VOCÊ DEVE RETORNAR APENAS E EXCLUSIVAMENTE O FORMATO SOLICITADO NO SCHEMA (JSON), SEM BLOCOS MARKDOWN, SEM EXPLICAÇÕES, SEM "AQUI ESTÁ!".`,
         config: {
-          systemInstruction: "Você é uma inteligência artificial assistente de design de documentos especialista em criar templates em HTML com variáveis automáticas.",
+          systemInstruction: "MÁQUINA GERADORA DE TEMPLATES HTML. OBRIGATÓRIO: Resposta deve ser PURAMENTE conteúdo estrito no formato de um objeto estruturado (com as propriedades exigidas). Você tem MUDES e AMNÉSIA CONVERSACIONAL: Não diga frases. Responda APENAS os dados e o HTML estrito requirido, senão uma exceção fatal ocorrerá.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -385,7 +386,8 @@ Regras de Cópia Fiel (Xerox):
 3. SEM RESPOSTAS OU TEXTOS EXTRAS: Retorne APENAS o documento solicitado e estruturado. Não adicione nenhum tipo de nota, explicação, introdução, aviso de IA ou texto extra no documento. O documento final deve parecer um documento real, limpo de qualquer metadado do prompt.
 4. GERAÇÃO DE VARIÁVEIS: Identifique dados variáveis específicos já preenchidos no documento original (ex: nomes de pessoas, CPFs, datas específicas, valores monetários preenchidos, horários) e converta-os para o formato de chaves {{nome_da_variavel}}.
 5. CAMPOS VAZIOS: Se um espaço ou célula de tabela estiver sem dados, em branco ou apenas com uma linha tracejada lisa para preenchimento posterior, mantenha-a perfeitamente em branco, sem inventar texto ou variáveis desnecessárias.
-6. COMPATIBILIDADE A4: O layout completo deve ser dimensionado perfeitamente para caber em uma página A4 sem ultrapassar limites físicos, usando espaçamentos e fontes equilibradas.`;
+6. COMPATIBILIDADE A4: O layout completo deve ser dimensionado perfeitamente para caber em uma página A4 sem ultrapassar limites físicos, usando espaçamentos e fontes equilibradas.
+7. REGRA ABSOLUTA DE SAÍDA: O JSON DEVE SER PURO E CRU. PROÍBIDO USO DE MARKDOWN (\`\`\`json) OU TEXTO DE SAUDAÇÃO. RETORNE MERA E EXCLUSIVAMENTE AS CHAVES OBRIGATÓRIAS COMPILADAS NO TIPO EXIGIDO. QUALQUER TEXTO FORA DO JSON IRÁ CORROMPER A INICIALIZAÇÃO DO SERVIDOR.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -399,7 +401,7 @@ Regras de Cópia Fiel (Xerox):
           }
         ],
         config: {
-          systemInstruction: "VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens de documentos que recebe com 100% de precisão para HTML/Tailwind, respeitando todas as linhas horizontais e verticais e sem adicionar nenhum texto extra.",
+          systemInstruction: "VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens de documentos que recebe com 100% de precisão para HTML/Tailwind. REGRA RÍGIDA: NÃO fale, NÃO cumprimente, NÃO use code blocks em markdown, emita EXCLUSIVAMENTE O FORMATO DE DADOS EXIGIDO no responseSchema (JSON PURO).",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,

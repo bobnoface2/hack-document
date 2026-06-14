@@ -152,7 +152,8 @@ O usuário enviou os seguintes dados (pode ser texto solto, lista ou tabular del
 {text}
 Para CADA registro, extraia as chaves: {', '.join(variables)}. 
 Se vazio, deixe "".
-Retorne estritamente um array JSON de objetos válidos."""
+Retorne estritamente um array JSON de objetos válidos. 
+REGRA ABSOLUTA: É TOTALMENTE PROIBIDO gerar qualquer texto de introdução ou conclusão. Não use tags markdown (\`\`\`json). Retorne OBRIGATORIAMENTE O JSON PURO DA ARRAY. Qualquer palavra extra quebrará o sistema."""
 
         response = client.models.generate_content(
             model='gemini-2.5-flash',
@@ -173,8 +174,9 @@ def generate():
         client = get_gemini_client()
         response = client.models.generate_content(
             model='gemini-3.5-flash',
-            contents=f'Crie um template HTML p/ "{prompt}" com tailwind e cabendo numa A4. Variaveis com chaves: {{{{vars}}}}',
+            contents=f'Crie um template HTML p/ "{prompt}" com tailwind e cabendo numa A4. Variaveis com chaves: {{{{vars}}}}. REGRA CRÍTICA DO SISTEMA: VOCÊ DEVE RETORNAR APENAS E EXCLUSIVAMENTE O FORMATO SOLICITADO NO SCHEMA (JSON), SEM BLOCOS MARKDOWN E SEM EXPLICAÇÕES.',
             config=types.GenerateContentConfig(
+                system_instruction="MÁQUINA GERADORA DE TEMPLATES HTML. OBRIGATÓRIO: Resposta deve ser PURAMENTE conteúdo estrito no formato de um objeto estruturado. Você tem AMNÉSIA CONVERSACIONAL: Não diga frases. Responda APENAS os dados requeridos, senão ocorrerá uma falha fatal.",
                 response_mime_type="application/json",
                 response_schema={
                     "type": "OBJECT",
@@ -199,7 +201,7 @@ def spellcheck():
         response = client.models.generate_content(
             model='gemini-3.5-flash',
             contents=f'Corrija ortografia (preserve tags HTML e vars): {content}',
-            config=types.GenerateContentConfig(system_instruction="Você é um revisor especialista.")
+            config=types.GenerateContentConfig(system_instruction="Você é um revisor de ortografia de elite. REGRA ABSOLUTA: É TOTALMENTE PROIBIDO gerar texto adicional, explicações ou cumprimentos. Retorne APENAS E ESTRITAMENTE o texto/HTML final corrigido. Nada antes, nada depois.")
         )
         return jsonify({"success": True, "result": response.text})
     except Exception as e:
@@ -214,7 +216,7 @@ def spacing():
         response = client.models.generate_content(
             model='gemini-3.5-flash',
             contents=f'Corrija espaços e margins de tailwind: {content}',
-            config=types.GenerateContentConfig(system_instruction="Você é um revisor de UI.")
+            config=types.GenerateContentConfig(system_instruction="Você é um expert em UI. REGRA ABSOLUTA: É TOTALMENTE PROIBIDO gerar explicações, introduções ou marcadores markdown de blocos de codigo. Responda ESTRITAMENTE E APENAS com O CÓDIGO HTML bruto modificado.")
         )
         return jsonify({"success": True, "result": response.text})
     except Exception as e:
@@ -228,7 +230,7 @@ def templatize():
         client = get_gemini_client()
         response = client.models.generate_content(
             model='gemini-3.5-flash',
-            contents=f'Troque dados por {{variaveis}} e preserve a exata estrutura do HTML Tailwind: {content}'
+            contents=f'Troque dados por {{variaveis}} e preserve a exata estrutura do HTML Tailwind: {content}\nREGRA ABSOLUTA: PROIBIDO FORNECER QUALQUER RESPOSTA CONVERSACIONAL. NUNCA use blocos markdown. Sua resposta deve ser ÚNICA E EXCLUSIVAMENTE o conteúdo modificado.'
         )
         return jsonify({"success": True, "result": response.text})
     except Exception as e:
@@ -259,7 +261,8 @@ Regras de Cópia Fiel (Xerox):
 3. SEM RESPOSTAS OU TEXTOS EXTRAS: Retorne APENAS o documento solicitado e estruturado. Não adicione nenhum tipo de nota, explicação, introdução, aviso de IA ou texto extra no documento. O documento final deve parecer um documento real, limpo de qualquer metadado do prompt.
 4. GERAÇÃO DE VARIÁVEIS: Identifique dados variáveis específicos já preenchidos no documento original (ex: nomes de pessoas, CPFs, datas específicas, valores monetários preenchidos, horários) e converta-os para o formato de chaves {{nome_da_variavel}}.
 5. CAMPOS VAZIOS: Se um espaço ou célula de tabela estiver sem dados, em branco ou apenas com uma linha tracejada lisa para preenchimento posterior, mantenha-a perfeitamente em branco, sem inventar texto ou variáveis desnecessárias.
-6. COMPATIBILIDADE A4: O layout completo deve ser dimensionado perfeitamente para caber em uma página A4 sem ultrapassar limites físicos, usando espaçamentos e fontes equilibradas."""
+6. COMPATIBILIDADE A4: O layout completo deve ser dimensionado perfeitamente para caber em uma página A4 sem ultrapassar limites físicos, usando espaçamentos e fontes equilibradas.
+7. REGRA ABSOLUTA DE SAÍDA: O JSON DEVE SER PURO E CRU. PROÍBIDO USO DE MARKDOWN (\`\`\`json) OU TEXTO DE SAUDAÇÃO. RETORNE EXCLUSIVAMENTE AS CHAVES OBRIGATÓRIAS NO TIPO EXIGIDO."""
 
         response = client.models.generate_content(
             model="gemini-3.5-flash",
@@ -268,7 +271,7 @@ Regras de Cópia Fiel (Xerox):
                 types.Part.from_bytes(data=raw_bytes, mime_type=mime)
             ],
             config=types.GenerateContentConfig(
-                system_instruction="VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens de documentos que recebe com 100% de precisão para HTML/Tailwind, respeitando todas as linhas horizontais e verticais e sem adicionar nenhum texto extra.",
+                system_instruction="VOCÊ É UMA MÁQUINA DE XEROX HTML. Você clona as imagens de documentos que recebe com precisão para HTML/Tailwind. REGRA RÍGIDA: NÃO fale, NÃO cumprimente, NÃO use code blocks em markdown, emita EXCLUSIVAMENTE O FORMATO DE DADOS EXIGIDO no schema (JSON PURO).",
                 response_mime_type="application/json",
                 response_schema={
                     "type": "OBJECT",
