@@ -34,17 +34,13 @@ async function initDB() {
 
 async function initTemplates() {
   try {
-    await fs.mkdir(TEMPLATES_DIR, { recursive: true });
-    const files = await fs.readdir(TEMPLATES_DIR);
-    if (files.length === 0) {
-      console.log("Populating physical templates directory with default templates...");
-      for (const template of defaultTemplates) {
-        const templatePath = path.join(TEMPLATES_DIR, `${template.id}.json`);
-        await fs.writeFile(templatePath, JSON.stringify(template, null, 2), 'utf-8');
-      }
+    const db = await readDB();
+    if (!db.templates) {
+      db.templates = [];
+      await saveDB(db);
     }
   } catch (err) {
-    console.error("Failed to initialize templates directory", err);
+    console.error("Failed to initialize templates structure", err);
   }
 }
 
@@ -100,20 +96,25 @@ async function startServer() {
   // API: Physical Templates Directory
   app.get('/api/templates', async (req, res) => {
     try {
-      await fs.mkdir(TEMPLATES_DIR, { recursive: true });
-      const files = await fs.readdir(TEMPLATES_DIR);
+      const db = await readDB();
       const templatesList = [];
-      for (const filename of files) {
-        if (filename.endsWith('.json')) {
-          try {
-            const filePath = path.join(TEMPLATES_DIR, filename);
-            const raw = await fs.readFile(filePath, 'utf-8');
-            templatesList.push(JSON.parse(raw));
-          } catch (err) {
-            console.error(`Error reading template file ${filename}:`, err);
+      try {
+        const files = await fs.readdir(TEMPLATES_DIR);
+        for (const filename of files) {
+          if (filename.endsWith('.json')) {
+            try {
+              const filePath = path.join(TEMPLATES_DIR, filename);
+              const raw = await fs.readFile(filePath, 'utf-8');
+              templatesList.push(JSON.parse(raw));
+            } catch (err) { }
           }
         }
+      } catch (e) { }
+
+      if (db.templates) {
+        templatesList.push(...db.templates);
       }
+
       // Sort templates by updatedAt (newest first). Fallback to createdAt.
       templatesList.sort((a, b) => {
         const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
@@ -132,9 +133,14 @@ async function startServer() {
       if (!template.id) {
         return res.status(400).json({ error: "O template precisa de um ID válido." });
       }
-      await fs.mkdir(TEMPLATES_DIR, { recursive: true });
-      const templatePath = path.join(TEMPLATES_DIR, `${template.id}.json`);
-      await fs.writeFile(templatePath, JSON.stringify(template, null, 2), 'utf-8');
+      
+      const db = await readDB();
+      if (!db.templates) db.templates = [];
+      const idx = db.templates.findIndex((t: any) => t.id === template.id);
+      if (idx >= 0) db.templates[idx] = template;
+      else db.templates.push(template);
+      
+      await saveDB(db);
       res.json({ success: true, template });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -144,17 +150,16 @@ async function startServer() {
   app.delete('/api/templates/:id', async (req, res) => {
     try {
       const { id } = req.params;
-      const templatePath = path.join(TEMPLATES_DIR, `${id}.json`);
-      try {
-        await fs.unlink(templatePath);
-        res.json({ success: true });
-      } catch (err: any) {
-        if (err.code === 'ENOENT') {
-          res.status(404).json({ error: "Template não encontrado." });
-        } else {
-          throw err;
+      const db = await readDB();
+      if (db.templates) {
+        const len = db.templates.length;
+        db.templates = db.templates.filter((t: any) => t.id !== id);
+        if (db.templates.length !== len) {
+          await saveDB(db);
+          return res.json({ success: true });
         }
       }
+      res.status(404).json({ error: "Template não encontrado." });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

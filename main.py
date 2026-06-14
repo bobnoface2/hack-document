@@ -20,7 +20,7 @@ def get_resource_path(relative_path):
 
 cwd = os.getcwd()
 DB_FILE = os.path.join(cwd, "HackDocumentPRO_Data.json")
-TEMPLATES_DIR = os.path.join(cwd, "templates")
+TEMPLATES_DIR = get_resource_path("templates")
 
 app = Flask(__name__, static_folder=get_resource_path("dist"))
 CORS(app)
@@ -29,12 +29,9 @@ def init_db():
     if not os.path.exists(DB_FILE):
         try:
             with open(DB_FILE, 'w', encoding='utf-8') as f:
-                json.dump({"store": {}, "logs": []}, f, indent=2)
+                json.dump({"store": {}, "logs": [], "templates": []}, f, indent=2)
         except Exception as e:
             print("Erro ao criar DB:", e)
-
-    if not os.path.exists(TEMPLATES_DIR):
-        os.makedirs(TEMPLATES_DIR, exist_ok=True)
 
 init_db()
 
@@ -90,33 +87,57 @@ def api_store():
 
 @app.route('/api/templates', methods=['GET', 'POST'])
 def handle_templates():
+    db = get_db()
     if request.method == 'GET':
-        os.makedirs(TEMPLATES_DIR, exist_ok=True)
-        files = [f for f in os.listdir(TEMPLATES_DIR) if f.endswith('.json')]
         templates_list = []
-        for filename in files:
-            try:
-                with open(os.path.join(TEMPLATES_DIR, filename), 'r', encoding='utf-8') as f:
-                    templates_list.append(json.load(f))
-            except:
-                pass
+        
+        # 1. Carrega templates empacotados (do exe)
+        if os.path.exists(TEMPLATES_DIR):
+            files = [f for f in os.listdir(TEMPLATES_DIR) if f.endswith('.json')]
+            for filename in files:
+                try:
+                    with open(os.path.join(TEMPLATES_DIR, filename), 'r', encoding='utf-8') as f:
+                        templates_list.append(json.load(f))
+                except:
+                    pass
+        
+        # 2. Carrega templates customizados criados pelo usuario (do DB_FILE)
+        user_templates = db.get("templates", [])
+        templates_list.extend(user_templates)
+        
         return jsonify(templates_list)
     else:
         template = request.json
         if not template.get('id'):
             return jsonify({"error": "ID inválido"}), 400
-        os.makedirs(TEMPLATES_DIR, exist_ok=True)
-        with open(os.path.join(TEMPLATES_DIR, f"{template['id']}.json"), 'w', encoding='utf-8') as f:
-            json.dump(template, f, indent=2)
+        
+        if "templates" not in db:
+            db["templates"] = []
+            
+        # Atualiza o template se ja existir, senao cria
+        updated = False
+        for i, t in enumerate(db["templates"]):
+            if t.get('id') == template['id']:
+                db["templates"][i] = template
+                updated = True
+                break
+        if not updated:
+            db["templates"].append(template)
+            
+        save_db(db)
         return jsonify({"success": True, "template": template})
 
 @app.route('/api/templates/<tid>', methods=['DELETE'])
 def delete_template(tid):
-    try:
-        os.remove(os.path.join(TEMPLATES_DIR, f"{tid}.json"))
-        return jsonify({"success": True})
-    except FileNotFoundError:
-        return jsonify({"error": "Not found"}), 404
+    db = get_db()
+    if "templates" in db:
+        new_list = [t for t in db["templates"] if t.get('id') != tid]
+        if len(new_list) != len(db["templates"]):
+            db["templates"] = new_list
+            save_db(db)
+            return jsonify({"success": True})
+    
+    return jsonify({"error": "Not found or cannot delete system template"}), 404
 
 @app.route('/api/ai/batch-parse', methods=['POST'])
 def batch_parse():
