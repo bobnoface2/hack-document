@@ -2,6 +2,7 @@
   "id": "default-1",
   "name": "Recibo Simples",
   "type": "documento",
+  "category": "financeiro",
   "format": "html",
   "content": "<div class=\"p-8 font-sans max-w-2xl mx-auto border border-gray-300 rounded-lg\">\n  <h1 class=\"text-2xl font-bold text-center mb-6 border-b pb-2\">RECIBO</h1>\n  <div class=\"flex justify-between mb-8 text-lg font-bold\">\n    <span>Recebi de:</span>\n    <span class=\"text-gray-700 bg-gray-100 px-4 rounded\">{{pagador}}</span>\n  </div>\n  <div class=\"mb-8 text-lg leading-relaxed\">\n    A quantia de <span class=\"font-bold\">R$ {{valor}}</span>, referente a <span class=\"italic border-b border-dashed border-gray-400\">{{referente_a}}</span>.\n  </div>\n  <div class=\"flex justify-between items-end mt-12\">\n    <div>\n      <p class=\"text-sm text-gray-500\">Data:</p>\n      <p class=\"font-medium\">{{data}}</p>\n    </div>\n    <div class=\"text-center\">\n      <div class=\"border-t border-black w-48 mb-2\"></div>\n      <p class=\"text-sm font-bold uppercase\">Assinatura</p>\n    </div>\n  </div>\n</div>",
   "createdAt": "2026-06-13T00:00:00.000Z",

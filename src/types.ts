@@ -4,6 +4,7 @@ export interface Template {
   id: string;
   name: string;
   type: TemplateType;
+  category?: string;
   format?: 'text' | 'html';
   content: string; // The text/HTML containing {{vars}}
   createdAt: string;

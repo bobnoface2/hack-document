@@ -1,0 +1,10 @@
+{
+  "id": "payroll-deduction-authorization",
+  "name": "Autorização de Desconto em Folha para Convênios",
+  "type": "documento",
+  "category": "rh",
+  "format": "html",
+  "content": "<div class=\"p-10 font-sans max-w-4xl mx-auto border border-neutral-300 rounded-xl bg-white shadow-sm border-t-4 border-pink-500\">\n  <div class=\"text-center border-b-2 border-neutral-800 pb-6 mb-8\">\n    <h1 class=\"text-2xl font-serif font-black text-neutral-900 uppercase tracking-tight\">AUTORIZAÇÃO GERAL DE DESCONTO EM HOLERITE (CLT ART. 462)</h1>\n    <p class=\"text-[10px] text-neutral-500 font-mono mt-2 tracking-widest\">CONVÊNIOS DE ASSISTÊNCIA MÉDICA E COOPERATIVIDADE CORPORATIVA</p>\n    <div class=\"mt-3 flex justify-center\">\n      <span class=\"text-[8px] uppercase font-mono bg-neutral-100 px-3 py-1 rounded-full border border-neutral-200 text-neutral-600 font-bold\">\n        SUB-MÓDULO: RH • ID: payroll-deduction-authorization\n      </span>\n    </div>\n  </div>\n\n  <div class=\"space-y-6 text-neutral-850 leading-relaxed text-sm text-justify\">\n    <p>Autorização irrevogável e livre dada pelo trabalhador ao departamento de RH pagador.</p>\n    <div class=\"space-y-2\">\n      <h2 class=\"text-base font-serif font-bold text-neutral-900 border-b border-neutral-250 pt-4 pb-1 uppercase tracking-tight\">1. DO DESCONTO</h2>\n      <p>Eu, {{desconto_colaborador_nome}} admito o desconto faturado em meu holerite no valor de R$ {{desconto_convenio_valor}} referente ao plano assistencial da entidade {{desconto_convenio_razao}}.</p>\n    </div>\n  </div>\n  <div class=\"grid grid-cols-2 gap-12 mt-16 text-center text-[11px] page-break-inside-avoid\">\n    <div class=\"space-y-3\">\n      <div class=\"border-t border-neutral-400 w-full pt-1.5\"></div>\n      <p class=\"font-bold text-neutral-950\">{{desconto_colaborador_nome}}</p>\n      <p class=\"text-neutral-500 font-mono text-[9px] uppercase tracking-wider\">EMPREGADO DECLARANTE</p>\n    </div>\n  </div>\n</div>",
+  "createdAt": "2026-06-17T00:00:00.000Z",
+  "updatedAt": "2026-06-17T00:00:00.000Z"
+}

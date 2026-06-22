@@ -1,0 +1,10 @@
+{
+  "id": "boas-festas-natal-corporativo",
+  "name": "Bilhete de Boas Festas - Natal Corporativo 🎄",
+  "type": "outro",
+  "category": "convites_festas",
+  "format": "html",
+  "content": "<div class=\"p-8 font-sans max-w-lg mx-auto bg-emerald-950 text-white rounded-2xl border-2 border-emerald-500/20 relative shadow-2xl\">\n  <div class=\"absolute -top-12 -right-12 text-7xl opacity-15\">❄️</div>\n  <div class=\"text-center space-y-6 relative z-10\">\n    <div class=\"text-5xl animate-spin-slow\">🎄🎅🔔</div>\n    <span class=\"text-[10px] bg-emerald-900/50 text-emerald-300 font-mono py-1 px-3 rounded-full border border-emerald-500/20 tracking-wider\">\n      {{nome_empresa}} • Fim de Ano\n    </span>\n    \n    <h1 class=\"text-3xl font-extrabold tracking-tight text-emerald-100\">\n      Feliz Natal & Próspero Ano Novo!\n    </h1>\n\n    <div class=\"text-xs text-emerald-200 leading-relaxed text-justify bg-emerald-950/60 p-4 rounded-xl border border-emerald-800/40 space-y-3\">\n      <p>Querido(a) <strong>{{nome_colaborador}}</strong>,</p>\n      <p>\n        O Natal é momento de agradecer por todas as metas cumpridas, degraus superados e pelo espírito de união que nos guiou neste ano memorável. Graças à sua dedicação incomparável, nossa organização voou mais alto!\n      </p>\n    </div>\n\n    <div class=\"border border-emerald-700/30 p-4 rounded-xl bg-emerald-900/10 text-center\">\n      <span class=\"block text-[9px] text-emerald-400 font-mono uppercase tracking-widest\">Nossa Festa de Confraternização</span>\n      <p class=\"text-xs text-white font-bold mt-1\">Dia {{data_confraternizacao}} às {{hora_confraternizacao}}</p>\n      <p class=\"text-[10px] text-emerald-300\">{{local_evento}}</p>\n    </div>\n\n    <div class=\"pt-4 text-center\">\n      <p class=\"text-[10px] text-emerald-500 font-mono uppercase\">Boas Festas com muito amor e realizações!</p>\n    </div>\n  </div>\n</div>",
+  "createdAt": "2026-06-17T14:51:34.183Z",
+  "updatedAt": "2026-06-17T14:51:34.183Z"
+}

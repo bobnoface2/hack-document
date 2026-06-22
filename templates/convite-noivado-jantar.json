@@ -1,0 +1,10 @@
+{
+  "id": "convite-noivado-jantar",
+  "name": "Convite de Noivado - Jantar Especial 💍",
+  "type": "outro",
+  "category": "convites_festas",
+  "format": "html",
+  "content": "<div class=\"p-8 font-serif max-w-md mx-auto bg-stone-50 border border-neutral-300 rounded-2xl relative shadow-lg\">\n  <div class=\"absolute inset-4 border border-stone-200 rounded pointer-events-none\"></div>\n  <div class=\"text-center relative space-y-6\">\n    <div class=\"text-4xl text-stone-600\">💍🍾💚</div>\n    <span class=\"text-[9px] font-mono text-stone-400 tracking-[0.2em] uppercase\">Sim, nós dissemos SIM!</span>\n    <h2 class=\"text-2xl font-normal text-stone-900 tracking-wide\">Festa de Noivado</h2>\n    \n    <p class=\"text-sm text-stone-700 leading-relaxed font-sans max-w-xs mx-auto\">\n      Deixamos as promessas do namoro de lado para escrever um futuro eterno. Gostaríamos de brindar o nosso noivado de <strong class=\"text-stone-900 font-serif\">{{par_namorados_1}} & {{par_namorados_2}}</strong> em família e amigos íntimos!\n    </p>\n\n    <div class=\"border-y border-stone-200 py-4 my-2 text-center font-sans\">\n      <p class=\"text-xs font-bold text-stone-800 tracking-widest uppercase\">{{data_noivado}} àS {{hora_noivado}}</p>\n    </div>\n\n    <div class=\"bg-stone-100 p-4 rounded-lg font-sans\">\n      <span class=\"block text-[8px] font-mono text-stone-500 uppercase tracking-widest\">Endereço da Celebração</span>\n      <strong class=\"text-xs text-stone-900 block mt-1\">{{restaurante_nome}}</strong>\n    </div>\n\n    <div class=\"pt-4 text-center font-sans\">\n      <p class=\"text-[9px] text-stone-400 uppercase tracking-wide\">Por favor, acuse sua presença até o dia {{confirmacao_ate}}</p>\n    </div>\n  </div>\n</div>",
+  "createdAt": "2026-06-17T14:51:34.182Z",
+  "updatedAt": "2026-06-17T14:51:34.182Z"
+}

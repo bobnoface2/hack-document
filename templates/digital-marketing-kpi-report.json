@@ -1,0 +1,10 @@
+{
+  "id": "digital-marketing-kpi-report",
+  "name": "Relatório Mensal de Indicadores de Marketing Digital",
+  "type": "documento",
+  "category": "relatorios",
+  "format": "html",
+  "content": "<div class=\"p-10 font-sans max-w-4xl mx-auto border border-neutral-300 rounded-xl bg-white shadow-sm border-t-4 border-amber-500\">\n  <div class=\"text-center border-b-2 border-neutral-800 pb-6 mb-8\">\n    <h1 class=\"text-2xl font-serif font-black text-neutral-900 uppercase tracking-tight\">RELATÓRIO DE PERFORMANCE DE CAMPANHAS GOOGLE/META</h1>\n    <p class=\"text-[10px] text-neutral-500 font-mono mt-2 tracking-widest\">DIRETRIZES DE RETORNO DO INVESTIMENTO EM ANÚNCIOS (ROAS KPI)</p>\n    <div class=\"mt-3 flex justify-center\">\n      <span class=\"text-[8px] uppercase font-mono bg-neutral-100 px-3 py-1 rounded-full border border-neutral-200 text-neutral-600 font-bold\">\n        SUB-MÓDULO: RELATORIOS • ID: digital-marketing-kpi-report\n      </span>\n    </div>\n  </div>\n\n  <div class=\"space-y-6 text-neutral-850 leading-relaxed text-sm text-justify\">\n    <p>Mapeamento quinzenal de investimento e captação de leads qualificados.</p>\n    <div class=\"space-y-2\">\n      <h2 class=\"text-base font-serif font-bold text-neutral-900 border-b border-neutral-250 pt-4 pb-1 uppercase tracking-tight\">1. DOS VALORES INVESTIDOS</h2>\n      <p>O analista de tráfego de marcas {{ads_analista_nome}} coordenou o orçamento bruto de R$ {{ads_orcamento_pago}} gerando faturamento estimado de novos leads de R$ {{ads_faturamento_retorno}}.</p>\n    </div>\n  </div>\n  <div class=\"grid grid-cols-2 gap-12 mt-16 text-center text-[11px] page-break-inside-avoid\">\n    <div class=\"space-y-3\">\n      <div class=\"border-t border-neutral-400 w-full pt-1.5\"></div>\n      <p class=\"font-bold text-neutral-950\">{{ads_analista_nome}}</p>\n      <p class=\"text-neutral-500 font-mono text-[9px] uppercase tracking-wider\">ANALISTA DE PERFORMANCE</p>\n    </div>\n  </div>\n</div>",
+  "createdAt": "2026-06-17T00:00:00.000Z",
+  "updatedAt": "2026-06-17T00:00:00.000Z"
+}

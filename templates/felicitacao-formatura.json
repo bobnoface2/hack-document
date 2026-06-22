@@ -1,0 +1,10 @@
+{
+  "id": "felicitacao-formatura",
+  "name": "Mensagem de Felicitações - Formatura 🎓",
+  "type": "outro",
+  "category": "convites_festas",
+  "format": "html",
+  "content": "<div class=\"p-8 font-serif max-w-xl mx-auto bg-[#0a0a09] text-white border-2 border-yellow-600/30 rounded-2xl relative shadow-2xl m-4\">\n  <div class=\"absolute inset-0 border-4 border-yellow-600/10 m-2 rounded-xl pointer-events-none\"></div>\n  <div class=\"text-center relative z-10 space-y-6\">\n    <div class=\"text-4xl text-yellow-500\">🎓✨📜</div>\n    <span class=\"text-[10px] tracking-[0.2em] font-mono text-yellow-500 uppercase\">Diplomacia e Conquistas</span>\n    <h2 class=\"text-3xl font-bold tracking-tight bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-500 bg-clip-text text-transparent uppercase\">\n      Parabéns pela Formatura!\n    </h2>\n    \n    <div class=\"text-sm font-sans text-stone-300 leading-relaxed text-justify px-4 space-y-4\">\n      <p>Querido(a) <strong>{{nome_formando}}</strong>,</p>\n      <p>\n        É com imenso orgulho e profunda admiração que celebramos este momento único de sua jornada. A conquista do diploma em <strong class=\"text-yellow-400\">{{curso_graduacao}}</strong> é a representação concreta de noites em claro, perseverança inabalável e dedicação contínua.\n      </p>\n      <p>\n         \"{{votos_futuro}}\"\n      </p>\n      <p>\n        Que seu futuro profissional seja abençoado com conquistas monumentais, ética sólida e satisfação indescritível em cada passo que você der!\n      </p>\n    </div>\n\n    <div class=\"pt-8 border-t border-stone-800 text-center font-sans\">\n      <p class=\"text-[10px] text-zinc-500 uppercase tracking-widest font-mono\">Com carinho e admiração de,</p>\n      <strong class=\"text-sm text-yellow-400 uppercase tracking-wide\">{{nome_remetente}}</strong>\n    </div>\n  </div>\n</div>",
+  "createdAt": "2026-06-17T14:51:34.182Z",
+  "updatedAt": "2026-06-17T14:51:34.182Z"
+}
